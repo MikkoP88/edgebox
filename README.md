@@ -2,7 +2,7 @@
 
 EdgeBox is a small hook system for building **floating UI** in React (draggable menus, resizable panels, chat windows, tool palettes) using an **edges-first** coordinate model.
 
-This repo contains EdgeBox as an npm workspace package at `packages/edgebox`.
+This repo contains the `@edgebox/react` package.
 
 ## Install
 
@@ -12,10 +12,11 @@ Published package:
 npm install @edgebox/react
 ```
 
-Workspace development (this repo):
+Local development (this repo):
 
 ```bash
-npm run build:edgebox
+npm install
+npm run build
 ```
 
 ## Exports
@@ -41,19 +42,15 @@ Types:
 
 ## Package structure (this repo)
 
-EdgeBox is a workspace package located at `packages/edgebox`:
+Package layout:
 
-- `packages/edgebox/src/` – source (hooks + helpers)
-- `packages/edgebox/dist/` – build output (`tsup`, ESM + CJS + types)
-- `packages/edgebox/package.json` – package metadata (`exports`, `peerDependencies`, published `files`)
-
-The app in this repo consumes EdgeBox via npm workspaces:
-
-- `src/hooks/index.ts` re-exports everything from `@edgebox/react`
+- `src/` – source (hooks + helpers)
+- `dist/` – build output (`tsup`, ESM + CJS + types)
+- `package.json` – package metadata (`exports`, `peerDependencies`, published `files`)
 
 ## Dependencies
 
-From `packages/edgebox/package.json`:
+From `package.json`:
 
 - `peerDependencies`
   - `react: >=18`
@@ -252,27 +249,9 @@ This is the standard composition pattern:
 
 If you use both drag and resize together, pass the current drag offset as `baseOffset` into resize so resize math matches the element’s transformed position.
 
-## Examples (from this repo)
+## Examples
 
-### Example: `Chat` (fixed-size panel + drag + resize)
-
-`Chat` is the “full composition” example:
-
-- committed position via `useEdgeBoxPosition`
-- temporary transform offsets via `useEdgeBoxDrag` + `useEdgeBoxResize`
-- `commitToEdges: true` so the final position is written back into `edges`
-
-See: `src/components/Chat/index.tsx`.
-
-### Example: `SiteMenu` (auto-sized element + drag + viewport clamp)
-
-`SiteMenu` uses auto dimensions (`width/height` can be `undefined`) and clamps via DOM measurement when the submenu opens/closes:
-
-- committed position via `useEdgeBoxPosition`
-- dragging via `useEdgeBoxDrag`
-- intrinsic-size clamping via `useEdgeBoxViewportClamp` (enabled when not dragging)
-
-See: `src/components/SiteMenu/index.tsx`.
+This repository contains the hooks and helpers only; example app/components are not included.
 
 ## Logic flow (how the hooks work together)
 
@@ -295,7 +274,7 @@ Typical render/update loop for a floating element:
 1) Build the package:
 
 ```bash
-npm -w @edgebox/react run build
+npm run build
 ```
 
 ## Important warnings (CSS + transforms)
