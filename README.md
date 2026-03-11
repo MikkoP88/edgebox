@@ -1,0 +1,365 @@
+# `@edgebox/react`
+
+EdgeBox is a small hook system for building **floating UI** in React (draggable menus, resizable panels, chat windows, tool palettes) using an **edges-first** coordinate model.
+
+This repo contains EdgeBox as an npm workspace package at `packages/edgebox`.
+
+## Install
+
+Published package:
+
+```bash
+npm install @edgebox/react
+```
+
+Workspace development (this repo):
+
+```bash
+npm run build:edgebox
+```
+
+## Exports
+
+```ts
+import {
+  usePaddingValues,
+  useCssEdgePosition,
+  useEdgeBoxPosition,
+  useEdgeBoxDrag,
+  useEdgeBoxResize,
+  useEdgeBoxViewportClamp,
+} from "@edgebox/react";
+```
+
+Types:
+
+- `Position`, `Dimensions`, `ResizeDirection`
+- `EdgeBoxEdges`
+- `EdgeBoxAutoFocus`
+- `PaddingValue`, `PaddingValues`
+- `CssEdgePosition`, `EdgePosition`
+
+## Package structure (this repo)
+
+EdgeBox is a workspace package located at `packages/edgebox`:
+
+- `packages/edgebox/src/` – source (hooks + helpers)
+- `packages/edgebox/dist/` – build output (`tsup`, ESM + CJS + types)
+- `packages/edgebox/package.json` – package metadata (`exports`, `peerDependencies`, published `files`)
+
+The app in this repo consumes EdgeBox via npm workspaces:
+
+- `src/hooks/index.ts` re-exports everything from `@edgebox/react`
+
+## Dependencies
+
+From `packages/edgebox/package.json`:
+
+- `peerDependencies`
+  - `react: >=18`
+- `devDependencies` (build-time only)
+  - `tsup` (bundling)
+  - `typescript` (type-checking + `.d.ts` emit)
+
+EdgeBox itself is designed to be dependency-light and is intended to work with any React app that can run hooks.
+
+## Core concepts
+
+### 1) Edges are viewport coordinates
+
+EdgeBox stores a rectangle as:
+
+```ts
+type EdgeBoxEdges = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  center: { x: number; y: number };
+};
+```
+
+All values are **pixel coordinates in the viewport** (i.e. `left=0` means flush to the left edge of the viewport).
+
+### 2) `padding` vs `safeZone`
+
+- `padding`: initial distance from the viewport edges for anchored placements (`bottom-right`, etc.).
+- `safeZone`: the minimum inset from the viewport edges enforced during:
+  - drag clamping
+  - resize clamping
+  - viewport resize (when `useEdgeBoxPosition` is in “manual” mode)
+  - viewport clamp (`useEdgeBoxViewportClamp`)
+
+In other words: **`padding` sets the start**, **`safeZone` is the boundary**.
+
+### 3) Offsets are applied via `transform`
+
+Drag/resize interactions typically produce *temporary* offsets (`dragOffset`, `resizeOffset`) that you apply with `translate3d(...)`.
+
+### 4) “Commit” vs “non-commit” positioning
+
+Both `useEdgeBoxDrag` and `useEdgeBoxResize` support `commitToEdges`:
+
+- `commitToEdges: true` (common for app UIs)
+  - while dragging/resizing you apply offsets via `transform`
+  - on gesture end, the hook updates `edges` via `updateEdges(...)`
+  - offsets are reset to `{ x: 0, y: 0 }`
+
+- `commitToEdges: false` (lower-level usage)
+  - the hook keeps offsets in state and does not mutate `edges`
+  - you can treat the offsets as the “source of truth” and persist them externally
+
+## Hook reference
+
+### `usePaddingValues(padding)`
+
+Normalizes a `number` or shorthand object into `PaddingValues`.
+
+```ts
+const paddingValues = usePaddingValues({ all: 24, horizontal: 32 });
+// => { top: 24, right: 32, bottom: 24, left: 32 }
+```
+
+### `useEdgeBoxPosition(options)`
+
+Tracks the committed box position (`edges`) and recalculates/clamps it on viewport resize.
+
+Options:
+
+- `position?: EdgePosition` – anchored start position (default: `bottom-right`)
+- `width?: number`, `height?: number` – known box dimensions (recommended)
+- `padding?: PaddingValues | number` – anchored inset (default: `24`)
+- `safeZone?: number` – boundary inset (default: `0`)
+- `disableAutoRecalc?: boolean` – disables automatic recalculation on `window.resize` (default: `false`)
+
+Returns:
+
+- `edges`
+- `recalculate()`
+- `updateEdges(partialEdges)` – switches EdgeBox into “manual mode” (future recalcs clamp the manual position instead of re-anchoring)
+
+### `useEdgeBoxDrag(options)`
+
+Adds draggable behavior and boundary clamping.
+
+Options (all):
+
+- `edges: EdgeBoxEdges`
+- `updateEdges?: (partial: Partial<EdgeBoxEdges>) => void`
+- `commitToEdges?: boolean` (default: `false`)
+- `safeZone?: number` (default: `0`)
+- `dragStartDistance?: number` (default: `6`)
+- `dragStartDelay?: number` (default: `150`)
+- `dragEndEventDelay?: number` (default: `150`)
+- `autoFocus?: EdgeBoxAutoFocus` (default: `unset`)
+- `autoFocusSensitivity?: number` (default: `5`)
+- `elementWidth?: number`, `elementHeight?: number` – optional sizing hints if you can’t provide an `elementRef`
+- `elementRef?: React.RefObject<HTMLElement>` – preferred for accurate sizing
+- `onDragEnd?: (finalOffset: Position) => void`
+
+Returns:
+
+- `dragOffset: { x, y }`
+- `isDragging`, `isPendingDrag`
+- `handleMouseDown(e)`, `handleTouchStart(e)`
+- `resetDragOffset()`
+
+Viewport resize note:
+
+- If `commitToEdges` is `true` and offsets are already committed (offset is `0,0`), the drag hook will not apply additional viewport-resize clamping. This avoids “double correction” when `useEdgeBoxPosition` also clamps `edges`.
+
+### Auto focus (optional snapping)
+
+Both `useEdgeBoxDrag` and `useEdgeBoxResize` can apply **auto focus** on gesture end.
+
+Auto focus means: if the box is already inside the `safeZone` and ends up *near* a “snap target” (edge/center/corner) it can be adjusted to align exactly.
+
+- `autoFocus?: EdgeBoxAutoFocus` (default: `unset`)
+- `autoFocusSensitivity?: number` (default: `5`) – interpreted as a **percentage of the viewport** (higher = easier snapping)
+
+Supported presets (see `packages/edgebox/src/autoFocus.ts` for the authoritative list):
+
+- `unset`
+- `all`, `full`
+- `horizontal`, `vertical`
+- `top`, `bottom`, `left`, `right`
+- `right-left`, `bottom-top`
+- `full-horizontal-vertical`, `horizontal-vertical`
+- `full-horizontal`, `full-vertical`
+- `full-top`, `full-bottom`, `full-left`, `full-right`
+- `corners`
+- `right-bottom`, `right-top`, `left-bottom`, `left-top`
+
+Advanced: you can also pass a comma-separated string of numeric “areas” (e.g. `"1,2,10"`) to control snapping more granularly.
+
+### `useEdgeBoxResize(options)`
+
+Adds 8-direction resize behavior with min/max constraints and safe-zone clamping.
+
+Options (all):
+
+- `edges: EdgeBoxEdges`
+- `updateEdges?: (partial: Partial<EdgeBoxEdges>) => void`
+- `commitToEdges?: boolean` (default: `false`)
+- `onCommitSize?: (dimensions: Dimensions) => void` – persist final size externally
+- `baseOffset?: Position` – use the current drag offset so resize math stays aligned (default: `{ x: 0, y: 0 }`)
+- `initialWidth?: number` (default: `420`), `initialHeight?: number` (default: `550`)
+- `minWidth?: number` (default: `300`), `minHeight?: number` (default: `400`)
+- `maxWidth?: number` (default: `window.innerWidth` / fallback `1920`)
+- `maxHeight?: number` (default: `window.innerHeight` / fallback `1080`)
+- `safeZone?: number` (default: `0`)
+- `autoFocus?: EdgeBoxAutoFocus` (default: `unset`)
+- `autoFocusSensitivity?: number` (default: `5`)
+- `onResizeEnd?: (finalDimensions: Dimensions, finalOffset: Position) => void`
+
+Returns:
+
+- `dimensions: { width, height }`
+- `resizeOffset: { x, y }`
+- `isResizing`, `resizeDirection`
+- `handleResizeStart(direction, e)`
+- `resetDimensions()`
+
+### `useEdgeBoxViewportClamp(options)`
+
+DOM-measure clamp for elements whose size changes *outside* drag/resize gestures (menus, popovers, dynamic content, responsive layout changes).
+
+Options:
+
+- `elementRef: React.RefObject<HTMLElement>`
+- `updateEdges(partialEdges)`
+- `safeZone?: number` (default: `0`)
+- `disabled?: boolean` (default: `false`)
+- `deps?: readonly unknown[]` (default: `[]`) – re-clamp after these dependencies change
+
+### `useCssEdgePosition(options)`
+
+Low-level helper that returns “CSS edge style” (`left`/`right`/`top`/`bottom`) for an anchored position. Most components in this repo use `useEdgeBoxPosition` directly instead.
+
+Options:
+
+- `position: EdgePosition`
+- `paddingValues: PaddingValues`
+
+## Recipe: draggable + resizable floating panel
+
+This is the standard composition pattern:
+
+1) `useEdgeBoxPosition` holds the committed `edges`.
+2) `useEdgeBoxDrag` produces `dragOffset`.
+3) `useEdgeBoxResize` produces `dimensions` and `resizeOffset`.
+4) Apply `edges` via CSS `left/top` and apply combined offsets via `transform`.
+
+If you use both drag and resize together, pass the current drag offset as `baseOffset` into resize so resize math matches the element’s transformed position.
+
+## Examples (from this repo)
+
+### Example: `Chat` (fixed-size panel + drag + resize)
+
+`Chat` is the “full composition” example:
+
+- committed position via `useEdgeBoxPosition`
+- temporary transform offsets via `useEdgeBoxDrag` + `useEdgeBoxResize`
+- `commitToEdges: true` so the final position is written back into `edges`
+
+See: `src/components/Chat/index.tsx`.
+
+### Example: `SiteMenu` (auto-sized element + drag + viewport clamp)
+
+`SiteMenu` uses auto dimensions (`width/height` can be `undefined`) and clamps via DOM measurement when the submenu opens/closes:
+
+- committed position via `useEdgeBoxPosition`
+- dragging via `useEdgeBoxDrag`
+- intrinsic-size clamping via `useEdgeBoxViewportClamp` (enabled when not dragging)
+
+See: `src/components/SiteMenu/index.tsx`.
+
+## Logic flow (how the hooks work together)
+
+Typical render/update loop for a floating element:
+
+1) `useEdgeBoxPosition` provides committed `edges`.
+2) Drag/resize hooks produce temporary offsets (`dragOffset`, `resizeOffset`) and/or dimensions.
+3) Your component renders with:
+   - static positioning: `left: edges.left`, `top: edges.top` (or `right/bottom` for auto-size patterns)
+   - dynamic movement: `transform: translate3d(offsetX, offsetY, 0)`
+4) On gesture end:
+   - if `commitToEdges: true`, the hook calls `updateEdges(...)` and resets offsets back to `0,0`
+   - if `commitToEdges: false`, offsets remain as the source of truth
+5) On viewport resize:
+   - `useEdgeBoxPosition` recalculates/clamps anchored boxes
+   - if the element is in “manual mode” (after `updateEdges`), it clamps the manual position into `safeZone`
+
+## Deploy (npm)
+
+1) Build the package:
+
+```bash
+npm -w @edgebox/react run build
+```
+
+## Important warnings (CSS + transforms)
+
+### Avoid transitions/animations on the *positioned container*
+
+EdgeBox updates `left`/`top` (and applies `transform`) frequently during pointer interactions.
+
+Do **not** apply `transition` / `animation` to these properties on the draggable/resizable container:
+
+- `transform`
+- `left`, `top`, `right`, `bottom`
+- `width`, `height`
+
+Why: any delay/easing on those properties will cause the DOM to “lag behind” pointer movement. This can create visible **jitter**, overshoot, and incorrect boundary/clamp behavior.
+
+Recommended pattern:
+
+- keep the outer EdgeBox-controlled element “instant” (no transitions)
+- apply transitions to inner content elements instead (opacity, background, shadows, etc.)
+
+## Common pitfalls (practical)
+
+### Use viewport-relative positioning
+
+EdgeBox `edges` are viewport coordinates, so the positioned element is typically `position: fixed`.
+
+If you place the element inside a transformed/zoomed parent, or inside a scroll container, viewport math and DOM rects (`getBoundingClientRect`) may no longer match your intended coordinate space.
+
+### Compose transforms (don’t overwrite them)
+
+EdgeBox expects to control `transform` for movement.
+
+If you also need a base transform (e.g. `translateX(-50%)` for centered anchors, scaling, rotation), **compose it into one `transform` string** rather than setting `transform` in two places.
+
+Example (good):
+
+```ts
+const transform = `${baseTransform} translate3d(${offset.x}px, ${offset.y}px, 0)`;
+```
+
+### Prefer `elementRef` for accurate sizing
+
+If possible, pass an `elementRef` into drag/viewport clamp so EdgeBox can measure the real DOM rect (including changes due to fonts, content, responsive layout, etc.).
+
+### CSS example: what *not* to do
+
+Bad (causes jitter/lag):
+
+```css
+.floating {
+  transition: all 300ms ease;
+  transition-delay: 100ms;
+}
+```
+
+Good:
+
+```css
+.floating {
+  /* no transitions on the EdgeBox-controlled container */
+}
+
+.floatingContent {
+  transition: opacity 300ms ease;
+}
+```
