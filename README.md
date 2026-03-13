@@ -16,6 +16,7 @@ This repo contains the `@edgebox/react` package.
 - **Edges-first model**: position is stored as `left/right/top/bottom` viewport coordinates.
 - **Drag**: pointer drag with safe-zone clamping (keeps the element on-screen).
 - **Resize**: 8-direction resize with min/max constraints and safe-zone clamping.
+- **Multitouch-safe gestures**: drag and resize track the initiating mouse/touch `eventId`, so extra touches do not steal the active gesture.
 - **Commit or not**: you can keep temporary offsets in state, or “commit” the final result back into `edges`.
 - **Auto focus snapping** (optional): snap to edges / center / corners when a gesture ends.
 - **Viewport clamp for auto-sized elements**: measure DOM size changes (via `ResizeObserver`) and clamp into the viewport.
@@ -146,11 +147,19 @@ export function FloatingWindow() {
   return (
     <div ref={ref} style={style} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}>
       <div>{isDragging ? "Dragging" : isPendingDrag ? "Hold…" : isResizing ? "Resizing" : "Idle"}</div>
-      <button onMouseDown={(e) => handleResizeStart("se", e)}>Resize (bottom-right)</button>
+      <button onMouseDown={(e) => handleResizeStart("se", e)} onTouchStart={(e) => handleResizeStart("se", e)}>
+        Resize (bottom-right)
+      </button>
     </div>
   );
 }
 ```
+
+Touch note:
+
+- `useEdgeBoxDrag` follows the touch that started the drag by its touch identifier.
+- `useEdgeBoxResize` accepts both mouse and touch start events; wire `onTouchStart` on resize handles if you want touch resizing.
+- During an active drag/resize, additional touches are ignored until the active gesture ends.
 
 Types:
 
@@ -418,6 +427,10 @@ Returns:
 - `handleMouseDown(e)`, `handleTouchStart(e)`
 - `resetDragOffset()`
 
+Multitouch note:
+
+- Touch drag tracks the initiating touch identifier. If another finger touches the screen during the gesture, it will not take over the drag.
+
 Viewport resize note:
 
 - If `commitToEdges` is `true` and offsets are already committed (offset is `0,0`), the drag hook will not apply additional viewport-resize clamping. This avoids “double correction” when `useEdgeBoxPosition` also clamps `edges`.
@@ -471,8 +484,14 @@ Returns:
 - `dimensions: { width, height }`
 - `resizeOffset: { x, y }`
 - `isResizing`, `resizeDirection`
-- `handleResizeStart(direction, e)`
+- `handleResizeStart(direction, e)` – accepts `React.MouseEvent | React.TouchEvent`
 - `resetDimensions()`
+
+Multitouch note:
+
+- Resize tracks the initiating mouse/touch `eventId`.
+- For touch devices, attach `handleResizeStart` to `onTouchStart` on your resize handles.
+- If multiple touches are present, only the touch that started the resize continues to control it.
 
 ### `useEdgeBoxViewportClamp(options)`
 

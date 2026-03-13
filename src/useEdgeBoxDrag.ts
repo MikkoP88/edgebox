@@ -10,6 +10,11 @@ import {
   DEFAULT_DRAG_START_DISTANCE,
   DEFAULT_SAFE_ZONE,
 } from "./constants";
+import {
+  getFirstTouchInteractionPoint,
+  getTouchInteractionPointById,
+  MOUSE_EVENT_ID,
+} from "./interaction";
 import type { Position } from "./types";
 
 export interface UseEdgeBoxDragOptions {
@@ -73,6 +78,7 @@ export function useEdgeBoxDrag({
   const isPendingDragRef = useRef(false);
   const pendingViewportResizeClampRef = useRef(false);
   const hasDraggedRef = useRef(false);
+  const activeEventIdRef = useRef<number | null>(null);
   const baseEdgesRef = useRef<{ left: number; right: number; top: number; bottom: number } | null>(null);
   const baseDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 
@@ -217,7 +223,10 @@ export function useEdgeBoxDrag({
     edges.bottom,
   ]);
 
-  const startDrag = useCallback((clientX: number, clientY: number) => {
+  const startDrag = useCallback((clientX: number, clientY: number, eventId: number) => {
+    if (activeEventIdRef.current !== null) return false;
+
+    activeEventIdRef.current = eventId;
     dragStartRef.current = { x: clientX, y: clientY };
     const currentOffset = dragOffsetRef.current;
     originalOffsetRef.current = { x: currentOffset.x, y: currentOffset.y };
@@ -266,6 +275,8 @@ export function useEdgeBoxDrag({
       setIsDragging(true);
       isDraggingRef.current = true;
     }, dragStartDelayRef.current);
+
+    return true;
   }, [edges, elementWidth, elementHeight, elementRef]);
 
   const activateDragIfPending = useCallback(() => {
@@ -282,7 +293,8 @@ export function useEdgeBoxDrag({
     isDraggingRef.current = true;
   }, []);
 
-  const handleDragMove = useCallback((clientX: number, clientY: number) => {
+  const handleDragMove = useCallback((clientX: number, clientY: number, eventId: number) => {
+    if (activeEventIdRef.current !== eventId) return;
     if (!isDraggingRef.current && !isPendingDragRef.current) return;
 
     const deltaX = clientX - dragStartRef.current.x;
@@ -303,7 +315,11 @@ export function useEdgeBoxDrag({
     setDragOffset(clamped);
   }, [clampToBoundaries, activateDragIfPending]);
 
-  const endDrag = useCallback(() => {
+  const endDrag = useCallback((eventId: number) => {
+    if (activeEventIdRef.current !== eventId) return false;
+
+    activeEventIdRef.current = null;
+
     if (dragTimerRef.current) {
       clearTimeout(dragTimerRef.current);
       dragTimerRef.current = null;
@@ -331,6 +347,8 @@ export function useEdgeBoxDrag({
         hasDraggedRef.current = false;
       }, dragEndEventDelayRef.current);
     }
+
+    return true;
   }, []);
 
   const applyAutoFocusOnEnd = useCallback((): Position => {
@@ -424,18 +442,17 @@ export function useEdgeBoxDrag({
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
-
-    startDrag(e.clientX, e.clientY);
+    if (!startDrag(e.clientX, e.clientY, MOUSE_EVENT_ID)) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isDraggingRef.current) {
         e.preventDefault();
       }
-      handleDragMove(e.clientX, e.clientY);
+      handleDragMove(e.clientX, e.clientY, MOUSE_EVENT_ID);
     };
 
     const handleMouseUp = () => {
-      endDrag();
+      if (!endDrag(MOUSE_EVENT_ID)) return;
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
 
@@ -455,24 +472,35 @@ export function useEdgeBoxDrag({
   }, [startDrag, handleDragMove, endDrag, applyAutoFocusOnEnd, commitOffsetIntoEdges, onDragEnd, clearBaseRefs]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
+    const touch = getFirstTouchInteractionPoint(e.changedTouches) ?? getFirstTouchInteractionPoint(e.touches);
     if (!touch) return;
-
-    startDrag(touch.clientX, touch.clientY);
+    if (!startDrag(touch.clientX, touch.clientY, touch.eventId)) return;
 
     const handleTouchMove = (e: TouchEvent) => {
+      const activeEventId = activeEventIdRef.current;
+      if (activeEventId === null) return;
+
+      const touch = getTouchInteractionPointById(e.touches, activeEventId)
+        ?? getTouchInteractionPointById(e.changedTouches, activeEventId);
+      if (!touch) return;
+
       if (isDraggingRef.current || isPendingDragRef.current) {
         e.preventDefault();
       }
-      const touch = e.touches[0];
-      if (!touch) return;
-      handleDragMove(touch.clientX, touch.clientY);
+
+      handleDragMove(touch.clientX, touch.clientY, touch.eventId);
     };
 
-    const handleTouchEnd = () => {
-      endDrag();
+    const handleTouchEnd = (e: TouchEvent) => {
+      const activeEventId = activeEventIdRef.current;
+      if (activeEventId === null) return;
+
+      const touch = getTouchInteractionPointById(e.changedTouches, activeEventId);
+      if (!touch || !endDrag(touch.eventId)) return;
+
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
 
       const finalOffset = applyAutoFocusOnEnd();
 
@@ -487,6 +515,7 @@ export function useEdgeBoxDrag({
 
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
   }, [startDrag, handleDragMove, endDrag, applyAutoFocusOnEnd, commitOffsetIntoEdges, onDragEnd, clearBaseRefs]);
 
   const resetDragOffset = useCallback(() => {
@@ -499,6 +528,8 @@ export function useEdgeBoxDrag({
       if (dragTimerRef.current) {
         clearTimeout(dragTimerRef.current);
       }
+
+      activeEventIdRef.current = null;
     };
   }, []);
 

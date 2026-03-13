@@ -13,6 +13,13 @@ import {
   DEFAULT_VIEWPORT_FALLBACK_HEIGHT,
   DEFAULT_VIEWPORT_FALLBACK_WIDTH,
 } from "./constants";
+import {
+  getFirstTouchInteractionPoint,
+  getMouseInteractionPoint,
+  getTouchInteractionPointById,
+  isTouchStartEvent,
+  MOUSE_EVENT_ID,
+} from "./interaction";
 import type { ResizeDirection, Dimensions, Position } from "./types";
 
 export interface UseEdgeBoxResizeOptions {
@@ -38,7 +45,7 @@ export interface UseEdgeBoxResizeResult {
   resizeOffset: Position;
   isResizing: boolean;
   resizeDirection: ResizeDirection | null;
-  handleResizeStart: (direction: ResizeDirection, e: React.MouseEvent) => void;
+  handleResizeStart: (direction: ResizeDirection, e: React.MouseEvent | React.TouchEvent) => void;
   resetDimensions: () => void;
 }
 
@@ -77,6 +84,7 @@ export function useEdgeBoxResize({
   const resizeStartRef = useRef<Position>({ x: 0, y: 0 });
   const startDimensionsRef = useRef<Dimensions>({ width: initialWidth, height: initialHeight });
   const startOffsetRef = useRef<Position>({ x: 0, y: 0 });
+  const activeEventIdRef = useRef<number | null>(null);
 
   const dimensionsRef = useRef<Dimensions>({ width: initialWidth, height: initialHeight });
   const resizeOffsetRef = useRef<Position>({ x: 0, y: 0 });
@@ -165,24 +173,40 @@ export function useEdgeBoxResize({
     setResizeOffset({ x: newOffsetX, y: newOffsetY });
   }, [resizeDirection, edges, minWidth, minHeight, maxWidth, maxHeight, safeZone]);
 
-  const handleResizeStart = useCallback((
+  const handleResizeStart: UseEdgeBoxResizeResult["handleResizeStart"] = useCallback((
     direction: ResizeDirection,
-    e: React.MouseEvent
+    e: React.MouseEvent | React.TouchEvent
   ) => {
     e.stopPropagation();
     e.preventDefault();
 
+    if (activeEventIdRef.current !== null) return;
+
+    let startPoint;
+
+    if (isTouchStartEvent(e)) {
+      startPoint = getFirstTouchInteractionPoint(e.changedTouches)
+        ?? getFirstTouchInteractionPoint(e.touches);
+    } else {
+      startPoint = getMouseInteractionPoint(e);
+    }
+
+    if (!startPoint) return;
+
     setIsResizing(true);
     setResizeDirection(direction);
+    activeEventIdRef.current = startPoint.eventId;
 
-    const startX = Math.max(0, Math.min(window.innerWidth, e.clientX));
-    const startY = Math.max(0, Math.min(window.innerHeight, e.clientY));
+    const startX = Math.max(0, Math.min(window.innerWidth, startPoint.clientX));
+    const startY = Math.max(0, Math.min(window.innerHeight, startPoint.clientY));
     resizeStartRef.current = { x: startX, y: startY };
     startDimensionsRef.current = { ...dimensions };
     startOffsetRef.current = { ...resizeOffset };
   }, [dimensions, resizeOffset]);
 
   const handleEndResize = useCallback(() => {
+    activeEventIdRef.current = null;
+
     const base = baseOffsetRef.current;
     const finalOffset = resizeOffsetRef.current;
     const finalDimensions = dimensionsRef.current;
@@ -245,6 +269,8 @@ export function useEdgeBoxResize({
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (activeEventIdRef.current !== MOUSE_EVENT_ID) return;
+
       const clientX = Math.max(0, Math.min(window.innerWidth, e.clientX));
       const clientY = Math.max(0, Math.min(window.innerHeight, e.clientY));
 
@@ -254,15 +280,50 @@ export function useEdgeBoxResize({
     };
 
     const handleMouseUp = () => {
+      if (activeEventIdRef.current !== MOUSE_EVENT_ID) return;
+      handleEndResize();
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const activeEventId = activeEventIdRef.current;
+      if (activeEventId === null || activeEventId === MOUSE_EVENT_ID) return;
+
+      const touch = getTouchInteractionPointById(e.touches, activeEventId)
+        ?? getTouchInteractionPointById(e.changedTouches, activeEventId);
+      if (!touch) return;
+
+      e.preventDefault();
+
+      const clientX = Math.max(0, Math.min(window.innerWidth, touch.clientX));
+      const clientY = Math.max(0, Math.min(window.innerHeight, touch.clientY));
+
+      const dx = clientX - resizeStartRef.current.x;
+      const dy = clientY - resizeStartRef.current.y;
+      applyResize(dx, dy);
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const activeEventId = activeEventIdRef.current;
+      if (activeEventId === null || activeEventId === MOUSE_EVENT_ID) return;
+
+      const touch = getTouchInteractionPointById(e.changedTouches, activeEventId);
+      if (!touch) return;
+
       handleEndResize();
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
     };
   }, [isResizing, applyResize, handleEndResize]);
 

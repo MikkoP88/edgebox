@@ -13,7 +13,7 @@ function ResizeHandle({
   disabled,
 }: {
   dir: ResizeDirection;
-  onStart: (dir: ResizeDirection, e: React.MouseEvent) => void;
+  onStart: (dir: ResizeDirection, e: React.MouseEvent | React.TouchEvent) => void;
   disabled?: boolean;
 }) {
   const size = 12;
@@ -38,7 +38,13 @@ function ResizeHandle({
     sw: { bottom: -size / 2, left: -size / 2, cursor: "nesw-resize" },
   };
 
-  return <div style={{ ...common, ...pos[dir] }} onMouseDown={(e) => onStart(dir, e)} />;
+  return (
+    <div
+      style={{ ...common, ...pos[dir] }}
+      onMouseDown={(e) => onStart(dir, e)}
+      onTouchStart={(e) => onStart(dir, e)}
+    />
+  );
 }
 
 export function DragResizeWindow() {

@@ -85,7 +85,7 @@ export function AutoSizedQuickMenu() {
           <button>Action B</button>
           <button>Action C</button>
           <div style={{ opacity: 0.8, fontSize: 12 }}>
-            This content changes the menu's size.
+            This content changes the menu&apos;s size.
           </div>
         </div>
       ) : null}
