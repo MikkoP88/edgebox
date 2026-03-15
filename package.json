@@ -23,6 +23,22 @@
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MikkoP88/edgebox.git"
+  },
+  "homepage": "https://github.com/MikkoP88/edgebox#readme",
+  "bugs": {
+    "url": "https://github.com/MikkoP88/edgebox/issues"
+  },
+  "keywords": [
+    "react",
+    "floating-ui",
+    "draggable",
+    "resizable",
+    "hooks",
+    "typescript"
+  ],
   "peerDependencies": {
     "react": ">=18"
   },
