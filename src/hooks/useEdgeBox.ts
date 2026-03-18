@@ -63,8 +63,8 @@ export interface UseEdgeBoxResizeHandleProps {
   onTouchStart?: (e: React.TouchEvent) => void;
 }
 
-export interface UseEdgeBoxResult {
-  ref: React.RefObject<HTMLDivElement>;
+export interface UseEdgeBoxResult<T extends HTMLElement = HTMLDivElement> {
+  ref: React.RefObject<T>;
   style: React.CSSProperties;
   edges: EdgeBoxEdges;
   dimensions: Dimensions;
@@ -89,7 +89,7 @@ export interface UseEdgeBoxResult {
   getResizeHandleProps: (direction: ResizeDirection) => UseEdgeBoxResizeHandleProps;
 }
 
-export function useEdgeBox({
+export function useEdgeBox<T extends HTMLElement = HTMLDivElement>({
   position = DEFAULT_EDGE_POSITION,
   width,
   height,
@@ -114,8 +114,8 @@ export function useEdgeBox({
   onCommitSize,
   onDragEnd,
   onResizeEnd,
-}: UseEdgeBoxOptions = {}): UseEdgeBoxResult {
-  const ref = useRef<HTMLDivElement>(null);
+}: UseEdgeBoxOptions = {}): UseEdgeBoxResult<T> {
+  const ref = useRef<T>(null);
 
   const resolvedInitialWidth = width ?? initialWidth ?? DEFAULT_RESIZE_INITIAL_WIDTH;
   const resolvedInitialHeight = height ?? initialHeight ?? DEFAULT_RESIZE_INITIAL_HEIGHT;
