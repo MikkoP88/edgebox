@@ -74,6 +74,7 @@ import {
   useEdgeBoxPosition,
   useEdgeBoxDrag,
   useEdgeBoxResize,
+  useEdgeBoxTransform,
   useEdgeBoxViewportClamp,
 } from "@edgebox-lite/react";
 ```
@@ -88,7 +89,13 @@ Minimal pattern:
 
 ```tsx
 import { useMemo, useRef, useState } from "react";
-import { useEdgeBoxPosition, useEdgeBoxDrag, useEdgeBoxResize, useEdgeBoxPaddingValues } from "@edgebox-lite/react";
+import {
+  useEdgeBoxPosition,
+  useEdgeBoxDrag,
+  useEdgeBoxResize,
+  useEdgeBoxPaddingValues,
+  useEdgeBoxTransform,
+} from "@edgebox-lite/react";
 
 export function FloatingWindow() {
   const ref = useRef<HTMLDivElement>(null);
@@ -126,13 +133,11 @@ export function FloatingWindow() {
     safeZone,
   });
 
-  const currentOffset = useMemo(
-    () => ({
-      x: dragOffset.x + (isResizing ? resizeOffset.x : 0),
-      y: dragOffset.y + (isResizing ? resizeOffset.y : 0),
-    }),
-    [dragOffset, isResizing, resizeOffset]
-  );
+  const { transform } = useEdgeBoxTransform({
+    dragOffset,
+    resizeOffset,
+    isResizing,
+  });
 
   const style = useMemo((): React.CSSProperties => ({
     position: "fixed",
@@ -140,9 +145,9 @@ export function FloatingWindow() {
     top: edges.top,
     width: dimensions.width,
     height: dimensions.height,
-    transform: `translate3d(${currentOffset.x}px, ${currentOffset.y}px, 0)`,
+    transform,
     touchAction: "none",
-  }), [edges, dimensions, currentOffset]);
+  }), [edges, dimensions, transform]);
 
   return (
     <div ref={ref} style={style} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}>
@@ -167,7 +172,7 @@ Types:
 - `EdgeBoxEdges`
 - `EdgeBoxAutoFocus`
 - `PaddingValue`, `PaddingValues`
-- `CssEdgePosition`, `EdgePosition`
+- `CssEdgePosition`, `EdgePosition`, `UseEdgeBoxCssPositionResult`
 
 ## Tutorial (copy/paste)
 
@@ -243,10 +248,11 @@ const { dimensions, resizeOffset, handleResizeStart, isResizing } = useEdgeBoxRe
 ### Step 6: Render (`edges` + offsets)
 
 ```tsx
-const offset = {
-  x: dragOffset.x + (isResizing ? resizeOffset.x : 0),
-  y: dragOffset.y + (isResizing ? resizeOffset.y : 0),
-};
+const { transform } = useEdgeBoxTransform({
+  dragOffset,
+  resizeOffset,
+  isResizing,
+});
 
 return (
   <div
@@ -257,7 +263,7 @@ return (
       top: edges.top,
       width: dimensions.width,
       height: dimensions.height,
-      transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
+      transform,
       touchAction: "none",
     }}
     onMouseDown={handleMouseDown}
@@ -284,6 +290,7 @@ flowchart LR
 | `useEdgeBoxPosition` | Initial anchored placement + viewport-resize recalc | `position`, `width/height`, `padding`, `safeZone` | `edges`, `updateEdges`, `recalculate`, `resetPosition` |
 | `useEdgeBoxDrag` | Dragging + boundary clamping | `edges`, `updateEdges`, `elementRef`, `safeZone` | `dragOffset`, `handleMouseDown`, `handleTouchStart`, `resetDragOffset`, `cancelDrag`, flags |
 | `useEdgeBoxResize` | Resizing + constraints + safe-zone clamping | `edges`, `updateEdges`, `baseOffset`, constraints | `dimensions`, `resizeOffset`, `handleResizeStart`, `resetSize(options?)`, flags |
+| `useEdgeBoxTransform` | Compose drag/resize motion into one render transform | offsets, optional `baseTransform` | `offset`, `transform` |
 | `useEdgeBoxViewportClamp` | Keep auto-sized DOM inside viewport | `elementRef`, `updateEdges`, `deps` | `clampNow()` |
 
 ## Package structure (this repo)
@@ -391,7 +398,7 @@ Options:
 
 - `position?: EdgePosition` – anchored start position (default: `bottom-right`)
 - `width?: number`, `height?: number` – known box dimensions (recommended)
-- `padding?: PaddingValues | number` – anchored inset (default: `24`)
+- `padding?: PaddingValue` – anchored inset (default: `24`)
 - `safeZone?: number` – boundary inset (default: `0`)
 - `disableAutoRecalc?: boolean` – disables automatic recalculation on `window.resize` (default: `false`)
 
@@ -502,6 +509,23 @@ Multitouch note:
 - For touch devices, attach `handleResizeStart` to `onTouchStart` on your resize handles.
 - If multiple touches are present, only the touch that started the resize continues to control it.
 
+### `useEdgeBoxTransform(options)`
+
+Composes EdgeBox motion into a single `translate3d(...)` string while keeping committed geometry in `edges`.
+
+Options:
+
+- `dragOffset?: Position` (default: `{ x: 0, y: 0 }`)
+- `resizeOffset?: Position` (default: `{ x: 0, y: 0 }`)
+- `isResizing?: boolean` – when provided, `resizeOffset` is only applied while resize is active
+- `includeResizeOffset?: boolean` (default: `true`)
+- `baseTransform?: string` – prepended before EdgeBox's `translate3d(...)`
+
+Returns:
+
+- `offset: { x, y }`
+- `transform: string`
+
 ### `useEdgeBoxViewportClamp(options)`
 
 DOM-measure clamp for elements whose size changes *outside* drag/resize gestures (menus, popovers, dynamic content, responsive layout changes).
@@ -534,7 +558,7 @@ This is the standard composition pattern:
 1) `useEdgeBoxPosition` holds the committed `edges`.
 2) `useEdgeBoxDrag` produces `dragOffset`.
 3) `useEdgeBoxResize` produces `dimensions` and `resizeOffset`.
-4) Apply `edges` via CSS `left/top` and apply combined offsets via `transform`.
+4) Apply `edges` via CSS `left/top` and apply combined offsets via `useEdgeBoxTransform(...)`.
 
 If you use both drag and resize together, pass the current drag offset as `baseOffset` into resize so resize math matches the element’s transformed position.
 
@@ -548,13 +572,14 @@ Typical render/update loop for a floating element:
 
 1) `useEdgeBoxPosition` provides committed `edges`.
 2) Drag/resize hooks produce temporary offsets (`dragOffset`, `resizeOffset`) and/or dimensions.
-3) Your component renders with:
+3) `useEdgeBoxTransform` composes those offsets into one render transform.
+4) Your component renders with:
    - static positioning: `left: edges.left`, `top: edges.top` (or `right/bottom` for auto-size patterns)
-   - dynamic movement: `transform: translate3d(offsetX, offsetY, 0)`
-4) On gesture end:
+   - dynamic movement: `transform`
+5) On gesture end:
    - if `commitToEdges: true`, the hook calls `updateEdges(...)` and resets offsets back to `0,0`
    - if `commitToEdges: false`, offsets remain as the source of truth
-5) On viewport resize:
+6) On viewport resize:
    - `useEdgeBoxPosition` recalculates/clamps anchored boxes
    - if the element is in “manual mode” (after `updateEdges`), it clamps the manual position into `safeZone`
 

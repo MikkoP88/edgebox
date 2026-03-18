@@ -50,5 +50,3 @@ export function useEdgeBoxPaddingValues(
   }, [padding]);
 }
 
-/** @deprecated Use `useEdgeBoxPaddingValues` instead. */
-export const usePaddingValues = useEdgeBoxPaddingValues;

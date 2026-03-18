@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import type { EdgeBoxEdges } from "./useEdgeBoxPosition";
 import { DEFAULT_SAFE_ZONE } from "./constants";
+import { getViewportClampDelta } from "./viewportBounds";
 
 export interface UseEdgeBoxViewportClampOptions {
   elementRef: React.RefObject<HTMLElement>;
@@ -35,35 +36,12 @@ export function useEdgeBoxViewportClamp({
     if (!el) return;
 
     const rect = el.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    const minLeft = safeZone;
-    const minTop = safeZone;
-    const maxRight = viewportWidth - safeZone;
-    const maxBottom = viewportHeight - safeZone;
-
-    const availableWidth = maxRight - minLeft;
-    const availableHeight = maxBottom - minTop;
-
-    let dx = 0;
-    let dy = 0;
-
-    if (rect.width > availableWidth) {
-      dx = minLeft - rect.left;
-    } else if (rect.left < minLeft) {
-      dx = minLeft - rect.left;
-    } else if (rect.right > maxRight) {
-      dx = maxRight - rect.right;
-    }
-
-    if (rect.height > availableHeight) {
-      dy = minTop - rect.top;
-    } else if (rect.top < minTop) {
-      dy = minTop - rect.top;
-    } else if (rect.bottom > maxBottom) {
-      dy = maxBottom - rect.bottom;
-    }
+    const { x: dx, y: dy } = getViewportClampDelta(
+      rect,
+      safeZone,
+      window.innerWidth,
+      window.innerHeight,
+    );
 
     if (dx === 0 && dy === 0) return;
 

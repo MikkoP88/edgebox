@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { EdgePosition } from "./cssEdgePosition";
-import { PaddingValues } from "./padding";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { EdgePosition } from "./useEdgeBoxCssPosition";
+import { useEdgeBoxPaddingValues, type PaddingValue, type PaddingValues } from "./useEdgeBoxPaddingValues";
+import { areEdgeBoxRectsEqual, mergeEdgeBoxEdges, toEdgeBoxEdges } from "./edgeBoxEdges";
 import {
   DEFAULT_DISABLE_AUTO_RECALC,
   DEFAULT_EDGE_PADDING,
@@ -8,24 +9,14 @@ import {
   DEFAULT_SAFE_ZONE,
 } from "./constants";
 
-export interface CenterPoint {
-  x: number;
-  y: number;
-}
-
-export interface EdgeBoxEdges {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-  center: CenterPoint;
-}
+export type { CenterPoint, EdgeBoxEdges } from "./edgeBoxEdges";
+import type { EdgeBoxEdges } from "./edgeBoxEdges";
 
 export interface UseEdgeBoxPositionOptions {
   position?: EdgePosition;
   width?: number;
   height?: number;
-  padding?: PaddingValues | number;
+  padding?: PaddingValue;
   safeZone?: number;
   disableAutoRecalc?: boolean;
 }
@@ -37,13 +28,6 @@ export interface UseEdgeBoxPositionResult {
   resetPosition: () => void;
 }
 
-function calculateCenter(edges: Omit<EdgeBoxEdges, 'center'>): CenterPoint {
-  return {
-    x: (edges.left + edges.right) / 2,
-    y: (edges.top + edges.bottom) / 2,
-  };
-}
-
 function calculateEdges(
   position: EdgePosition,
   width: number | undefined,
@@ -52,8 +36,7 @@ function calculateEdges(
   safeZone: number,
 ): EdgeBoxEdges {
   if (typeof window === 'undefined') {
-    const edges = { left: 0, right: 0, top: 0, bottom: 0 };
-    return { ...edges, center: calculateCenter(edges) };
+    return toEdgeBoxEdges({ left: 0, right: 0, top: 0, bottom: 0 });
   }
 
   const viewportWidth = window.innerWidth;
@@ -100,8 +83,7 @@ function calculateEdges(
     bottom = top + height;
   }
 
-  const edges = { left, right, top, bottom };
-  return { ...edges, center: calculateCenter(edges) };
+  return toEdgeBoxEdges({ left, right, top, bottom });
 }
 
 export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): UseEdgeBoxPositionResult {
@@ -114,11 +96,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
     disableAutoRecalc = DEFAULT_DISABLE_AUTO_RECALC,
   } = options;
 
-  const paddingValues: PaddingValues = useMemo(() => {
-    return typeof paddingProp === "number"
-      ? { top: paddingProp, right: paddingProp, bottom: paddingProp, left: paddingProp }
-      : paddingProp;
-  }, [paddingProp]);
+  const paddingValues = useEdgeBoxPaddingValues(paddingProp);
 
   const [edges, setEdges] = useState<EdgeBoxEdges>(() =>
     calculateEdges(position, width, height, paddingValues, safeZone)
@@ -153,7 +131,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
             bottom: top + h,
           };
 
-          return { ...next, center: calculateCenter(next) };
+          return toEdgeBoxEdges(next);
         }
 
         // If we can't determine a box size, fall back to the default positional calculation.
@@ -165,8 +143,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
 
     setEdges(prev => {
       const next = calculateEdges(position, width, height, paddingValues, safeZone);
-      if (prev.left === next.left && prev.top === next.top &&
-          prev.right === next.right && prev.bottom === next.bottom) {
+      if (areEdgeBoxRectsEqual(prev, next)) {
         return prev;
       }
       return next;
@@ -174,15 +151,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
   }, [position, width, height, paddingValues, safeZone]);
 
   const updateEdges = useCallback((newEdges: Partial<EdgeBoxEdges>, manualPosition = true) => {
-    setEdges(prev => {
-      const merged = {
-        left: newEdges.left ?? prev.left,
-        right: newEdges.right ?? prev.right,
-        top: newEdges.top ?? prev.top,
-        bottom: newEdges.bottom ?? prev.bottom,
-      };
-      return { ...merged, center: calculateCenter(merged) };
-    });
+    setEdges(prev => mergeEdgeBoxEdges(prev, newEdges));
 
     isManualPositionRef.current = manualPosition;
   }, []);
@@ -191,8 +160,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
     isManualPositionRef.current = false;
     setEdges(prev => {
       const next = calculateEdges(position, width, height, paddingValues, safeZone);
-      if (prev.left === next.left && prev.top === next.top &&
-          prev.right === next.right && prev.bottom === next.bottom) {
+      if (areEdgeBoxRectsEqual(prev, next)) {
         return prev;
       }
       return next;

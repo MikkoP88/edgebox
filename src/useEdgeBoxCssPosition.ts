@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from "react";
-import { PaddingValues } from "./padding";
+import type { PaddingValues } from "./useEdgeBoxPaddingValues";
 
 /** Position options for elements */
 export type EdgePosition = "bottom-right" | "bottom-left" | "bottom-center" | "top-right" | "top-left" | "top-center";
@@ -13,12 +13,14 @@ export interface CssEdgePosition {
 }
 
 /** Return value for useEdgeBoxCssPosition hook */
-export interface UseCssEdgePositionResult {
+export interface UseEdgeBoxCssPositionResult {
   /** Function to calculate CSS edge position */
   cssEdgePosition: () => CssEdgePosition;
   /** Initial CSS edge position */
   initialCssPosition: CssEdgePosition;
 }
+
+export type UseCssEdgePositionResult = UseEdgeBoxCssPositionResult;
 
 /**
  * Custom hook that calculates CSS edge position for boundary calculations.
@@ -26,7 +28,7 @@ export interface UseCssEdgePositionResult {
 export function useEdgeBoxCssPosition(options: {
   position: EdgePosition;
   paddingValues: PaddingValues;
-}): UseCssEdgePositionResult {
+}): UseEdgeBoxCssPositionResult {
   const { position, paddingValues } = options;
 
   const calculateCssPosition = useCallback((): CssEdgePosition => {
@@ -66,5 +68,3 @@ export function useEdgeBoxCssPosition(options: {
   };
 }
 
-/** @deprecated Use `useEdgeBoxCssPosition` instead. */
-export const useCssEdgePosition = useEdgeBoxCssPosition;

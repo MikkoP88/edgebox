@@ -7,11 +7,11 @@
  * type/name collisions (e.g. multiple `Position`/`Dimensions` types).
  */
 
-export { useEdgeBoxPaddingValues, usePaddingValues } from "./padding";
-export type { PaddingValue, PaddingValues } from "./padding";
+export { useEdgeBoxPaddingValues } from "./useEdgeBoxPaddingValues";
+export type { PaddingValue, PaddingValues } from "./useEdgeBoxPaddingValues";
 
-export { useEdgeBoxCssPosition, useCssEdgePosition } from "./cssEdgePosition";
-export type { CssEdgePosition, EdgePosition, UseCssEdgePositionResult } from "./cssEdgePosition";
+export { useEdgeBoxCssPosition } from "./useEdgeBoxCssPosition";
+export type { CssEdgePosition, EdgePosition, UseEdgeBoxCssPositionResult, UseCssEdgePositionResult } from "./useEdgeBoxCssPosition";
 
 export type { ResizeDirection } from "./types";
 
@@ -23,5 +23,8 @@ export type { EdgeBoxAutoFocus } from "./autoFocus";
 export { useEdgeBoxDrag } from "./useEdgeBoxDrag";
 
 export { useEdgeBoxResize } from "./useEdgeBoxResize";
+
+export { useEdgeBoxTransform } from "./useEdgeBoxTransform";
+export type { UseEdgeBoxTransformOptions, UseEdgeBoxTransformResult } from "./useEdgeBoxTransform";
 
 export { useEdgeBoxViewportClamp } from "./useEdgeBoxViewportClamp";

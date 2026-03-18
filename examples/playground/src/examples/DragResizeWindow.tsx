@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import {
   useEdgeBoxDrag,
+  useEdgeBoxPaddingValues,
   useEdgeBoxPosition,
   useEdgeBoxResize,
-  usePaddingValues,
+  useEdgeBoxTransform,
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
@@ -49,7 +50,7 @@ function ResizeHandle({
 
 export function DragResizeWindow() {
   const windowRef = useRef<HTMLDivElement>(null);
-  const paddingValues = usePaddingValues(24);
+  const paddingValues = useEdgeBoxPaddingValues(24);
   const safeZone = 16;
 
   const [committedSize, setCommittedSize] = useState({ width: 420, height: 260 });
@@ -87,10 +88,11 @@ export function DragResizeWindow() {
     autoFocusSensitivity: 6,
   });
 
-  const currentOffset = {
-    x: dragOffset.x + (isResizing ? resizeOffset.x : 0),
-    y: dragOffset.y + (isResizing ? resizeOffset.y : 0),
-  };
+  const { transform } = useEdgeBoxTransform({
+    dragOffset,
+    resizeOffset,
+    isResizing,
+  });
 
   const style: React.CSSProperties = {
     position: "fixed",
@@ -98,7 +100,7 @@ export function DragResizeWindow() {
     top: edges.top,
     width: `${dimensions.width}px`,
     height: `${dimensions.height}px`,
-    transform: `translate3d(${currentOffset.x}px, ${currentOffset.y}px, 0)`,
+    transform,
     background: "rgba(255,255,255,0.07)",
     border: "1px solid rgba(255,255,255,0.18)",
     borderRadius: 18,

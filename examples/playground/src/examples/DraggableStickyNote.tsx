@@ -1,10 +1,10 @@
 import { useRef } from "react";
-import { useEdgeBoxDrag, useEdgeBoxPosition, usePaddingValues } from "@edgebox-lite/react";
+import { useEdgeBoxDrag, useEdgeBoxPaddingValues, useEdgeBoxPosition, useEdgeBoxTransform } from "@edgebox-lite/react";
 
 export function DraggableStickyNote() {
   const noteRef = useRef<HTMLDivElement>(null);
 
-  const paddingValues = usePaddingValues(24);
+  const paddingValues = useEdgeBoxPaddingValues(24);
   const safeZone = 16;
 
   const width = 260;
@@ -26,13 +26,15 @@ export function DraggableStickyNote() {
     safeZone,
   });
 
+  const { transform } = useEdgeBoxTransform({ dragOffset });
+
   const style: React.CSSProperties = {
     position: "fixed",
     left: edges.left,
     top: edges.top,
     width,
     height,
-    transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`,
+    transform,
     background: "#ffe066",
     color: "#1b1b1b",
     borderRadius: 16,

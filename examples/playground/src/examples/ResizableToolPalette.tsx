@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
+  useEdgeBoxPaddingValues,
   useEdgeBoxPosition,
   useEdgeBoxResize,
-  usePaddingValues,
+  useEdgeBoxTransform,
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
@@ -38,7 +39,7 @@ function Handle({ dir, onStart }: { dir: ResizeDirection; onStart: (dir: ResizeD
 }
 
 export function ResizableToolPalette() {
-  const paddingValues = usePaddingValues(24);
+  const paddingValues = useEdgeBoxPaddingValues(24);
   const safeZone = 16;
 
   const [committedSize, setCommittedSize] = useState({ width: 360, height: 220 });
@@ -63,13 +64,15 @@ export function ResizableToolPalette() {
     safeZone,
   });
 
+  const { transform } = useEdgeBoxTransform({ resizeOffset });
+
   const style: React.CSSProperties = {
     position: "fixed",
     left: edges.left,
     top: edges.top,
     width: dimensions.width,
     height: dimensions.height,
-    transform: `translate3d(${resizeOffset.x}px, ${resizeOffset.y}px, 0)`,
+    transform,
     background: "rgba(255,255,255,0.08)",
     border: "1px solid rgba(255,255,255,0.18)",
     borderRadius: 16,

@@ -14,13 +14,14 @@ import {
   DEFAULT_VIEWPORT_FALLBACK_WIDTH,
 } from "./constants";
 import {
-  getFirstTouchInteractionPoint,
-  getMouseInteractionPoint,
+  clampClientPointToViewport,
+  getStartInteractionPoint,
   getTouchInteractionPointById,
-  isTouchStartEvent,
   MOUSE_EVENT_ID,
 } from "./interaction";
 import type { ResizeDirection, Dimensions, Position } from "./types";
+import { useLatestRef } from "./useLatestRef";
+import { clampDimensionsToViewport, clampTopLeftToViewport } from "./viewportBounds";
 
 export interface UseEdgeBoxResizeOptions {
   edges: EdgeBoxEdges;
@@ -71,10 +72,7 @@ export function useEdgeBoxResize({
   autoFocusSensitivity = DEFAULT_AUTO_FOCUS_SENSITIVITY,
   onResizeEnd,
 }: UseEdgeBoxResizeOptions): UseEdgeBoxResizeResult {
-  const edgesRef = useRef(edges);
-  useEffect(() => {
-    edgesRef.current = edges;
-  }, [edges]);
+  const edgesRef = useLatestRef(edges);
 
   const [dimensions, setDimensions] = useState<Dimensions>({
     width: initialWidth,
@@ -91,18 +89,9 @@ export function useEdgeBoxResize({
   const startOffsetRef = useRef<Position>({ x: 0, y: 0 });
   const activeEventIdRef = useRef<number | null>(null);
 
-  const dimensionsRef = useRef<Dimensions>({ width: initialWidth, height: initialHeight });
-  const resizeOffsetRef = useRef<Position>({ x: 0, y: 0 });
-  const baseOffsetRef = useRef<Position>(baseOffset);
-
-  useEffect(() => {
-    dimensionsRef.current = dimensions;
-    resizeOffsetRef.current = resizeOffset;
-  }, [dimensions, resizeOffset]);
-
-  useEffect(() => {
-    baseOffsetRef.current = baseOffset;
-  }, [baseOffset]);
+  const dimensionsRef = useLatestRef(dimensions);
+  const resizeOffsetRef = useLatestRef(resizeOffset);
+  const baseOffsetRef = useLatestRef(baseOffset);
 
   useEffect(() => {
     if (isResizing) return;
@@ -187,14 +176,7 @@ export function useEdgeBoxResize({
 
     if (activeEventIdRef.current !== null) return;
 
-    let startPoint;
-
-    if (isTouchStartEvent(e)) {
-      startPoint = getFirstTouchInteractionPoint(e.changedTouches)
-        ?? getFirstTouchInteractionPoint(e.touches);
-    } else {
-      startPoint = getMouseInteractionPoint(e);
-    }
+    const startPoint = getStartInteractionPoint(e);
 
     if (!startPoint) return;
 
@@ -202,8 +184,7 @@ export function useEdgeBoxResize({
     setResizeDirection(direction);
     activeEventIdRef.current = startPoint.eventId;
 
-    const startX = Math.max(0, Math.min(window.innerWidth, startPoint.clientX));
-    const startY = Math.max(0, Math.min(window.innerHeight, startPoint.clientY));
+    const { x: startX, y: startY } = clampClientPointToViewport(startPoint.clientX, startPoint.clientY);
     resizeStartRef.current = { x: startX, y: startY };
     startDimensionsRef.current = { ...dimensions };
     startOffsetRef.current = { ...resizeOffset };
@@ -273,22 +254,17 @@ export function useEdgeBoxResize({
       height: initialHeight,
     };
 
-    const finalDimensions = { ...requestedDimensions };
-
-    if (typeof window !== 'undefined') {
-      const availableWidth = Math.max(0, window.innerWidth - safeZone * 2);
-      const availableHeight = Math.max(0, window.innerHeight - safeZone * 2);
-
-      finalDimensions.width = Math.min(
-        Math.max(minWidth, Math.min(maxWidth, requestedDimensions.width)),
-        availableWidth
-      );
-
-      finalDimensions.height = Math.min(
-        Math.max(minHeight, Math.min(maxHeight, requestedDimensions.height)),
-        availableHeight
-      );
-    }
+    const finalDimensions = typeof window !== 'undefined'
+      ? clampDimensionsToViewport(requestedDimensions, {
+          minWidth,
+          minHeight,
+          maxWidth,
+          maxHeight,
+          safeZone,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+        })
+      : { ...requestedDimensions };
 
     activeEventIdRef.current = null;
     setIsResizing(false);
@@ -311,8 +287,16 @@ export function useEdgeBoxResize({
         let top = baseEdges.top;
 
         if (typeof window !== 'undefined') {
-          left = Math.max(safeZone, Math.min(window.innerWidth - safeZone - finalDimensions.width, left));
-          top = Math.max(safeZone, Math.min(window.innerHeight - safeZone - finalDimensions.height, top));
+          const clampedPosition = clampTopLeftToViewport(
+            left,
+            top,
+            finalDimensions,
+            safeZone,
+            window.innerWidth,
+            window.innerHeight,
+          );
+          left = clampedPosition.x;
+          top = clampedPosition.y;
         }
 
         updateEdges({
@@ -333,8 +317,7 @@ export function useEdgeBoxResize({
     const handleMouseMove = (e: MouseEvent) => {
       if (activeEventIdRef.current !== MOUSE_EVENT_ID) return;
 
-      const clientX = Math.max(0, Math.min(window.innerWidth, e.clientX));
-      const clientY = Math.max(0, Math.min(window.innerHeight, e.clientY));
+      const { x: clientX, y: clientY } = clampClientPointToViewport(e.clientX, e.clientY);
 
       const dx = clientX - resizeStartRef.current.x;
       const dy = clientY - resizeStartRef.current.y;
@@ -356,8 +339,7 @@ export function useEdgeBoxResize({
 
       e.preventDefault();
 
-      const clientX = Math.max(0, Math.min(window.innerWidth, touch.clientX));
-      const clientY = Math.max(0, Math.min(window.innerHeight, touch.clientY));
+      const { x: clientX, y: clientY } = clampClientPointToViewport(touch.clientX, touch.clientY);
 
       const dx = clientX - resizeStartRef.current.x;
       const dy = clientY - resizeStartRef.current.y;
