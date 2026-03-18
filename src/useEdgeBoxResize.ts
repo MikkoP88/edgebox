@@ -281,12 +281,12 @@ export function useEdgeBoxResize({
 
       finalDimensions.width = Math.min(
         Math.max(minWidth, Math.min(maxWidth, requestedDimensions.width)),
-        availableWidth || requestedDimensions.width
+        availableWidth
       );
 
       finalDimensions.height = Math.min(
         Math.max(minHeight, Math.min(maxHeight, requestedDimensions.height)),
-        availableHeight || requestedDimensions.height
+        availableHeight
       );
     }
 

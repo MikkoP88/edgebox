@@ -487,14 +487,14 @@ Returns:
 - `resizeOffset: { x, y }`
 - `isResizing`, `resizeDirection`
 - `handleResizeStart(direction, e)` – accepts `React.MouseEvent | React.TouchEvent`
-- `resetSize(options?)` – cancels active resize state and restores the current `initialWidth` / `initialHeight`
+- `resetSize(options?)` – cancels active resize state and restores the current `initialWidth` / `initialHeight`, subject to current min/max and viewport-safe constraints
 - `resetDimensions(options?)` – compatibility alias for `resetSize(options?)`
 
 Reset options:
 
 - `commit?: boolean` (default: `false`)
   - `resetSize()` resets local resize state only
-  - `resetSize({ commit: true })` also calls `onCommitSize(...)` and commits reset dimensions back into `edges` through `updateEdges(...)`
+  - `resetSize({ commit: true })` also calls `onCommitSize(...)` and commits the reset dimensions back into `edges` through `updateEdges(...)`
 
 Multitouch note:
 
