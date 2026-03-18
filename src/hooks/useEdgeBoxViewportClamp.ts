@@ -1,14 +1,14 @@
-import { useCallback, useEffect } from "react";
-import type { EdgeBoxEdges } from "./useEdgeBoxPosition";
-import { DEFAULT_SAFE_ZONE } from "./constants";
-import { getViewportClampDelta } from "./viewportBounds";
+import { useCallback, useEffect, type DependencyList, type RefObject } from "react";
+import type { EdgeBoxEdges } from "../edgeBoxEdges";
+import { DEFAULT_SAFE_ZONE } from "../internal/edgeBoxConstants";
+import { getViewportClampDelta } from "../internal/edgeBoxViewportBounds";
 
 export interface UseEdgeBoxViewportClampOptions {
-  elementRef: React.RefObject<HTMLElement>;
+  elementRef: RefObject<HTMLElement>;
   updateEdges: (edges: Partial<EdgeBoxEdges>) => void;
   safeZone?: number;
   disabled?: boolean;
-  deps?: readonly unknown[];
+  deps?: DependencyList;
 }
 
 export interface UseEdgeBoxViewportClampResult {
@@ -60,8 +60,7 @@ export function useEdgeBoxViewportClamp({
 
     const id = window.requestAnimationFrame(() => clampIntoViewport());
     return () => window.cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled, clampIntoViewport, ...deps]);
+  }, [disabled, clampIntoViewport, deps]);
 
   // Clamp on intrinsic size changes (transitions, content updates, responsive changes).
   useEffect(() => {

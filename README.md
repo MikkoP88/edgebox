@@ -79,6 +79,20 @@ import {
 } from "@edgebox-lite/react";
 ```
 
+All exported hooks in the package entrypoint:
+
+| Hook | Status | Primary purpose |
+|---|---|---|
+| `useEdgeBoxPaddingValues` | Exported | Normalize padding shorthand into resolved edge values |
+| `useEdgeBoxCssPosition` | Exported | Compute low-level CSS `left`/`right`/`top`/`bottom` anchor values |
+| `useEdgeBoxPosition` | Exported | Track committed viewport `edges` and recalculate/clamp them |
+| `useEdgeBoxDrag` | Exported | Add drag interactions with safe-zone clamping |
+| `useEdgeBoxResize` | Exported | Add 8-direction resize interactions with constraints |
+| `useEdgeBoxTransform` | Exported | Combine drag/resize offsets into one `translate3d(...)` |
+| `useEdgeBoxViewportClamp` | Exported | Measure DOM size changes and keep the box inside the viewport |
+
+In other words, the README documents every hook currently exported by `src/index.ts`.
+
 ## Quick start (drag + resize)
 
 Minimal pattern:
@@ -287,6 +301,7 @@ flowchart LR
 | Hook | What it solves | You give it | You get back |
 |---|---|---|---|
 | `useEdgeBoxPaddingValues` | Turn shorthand padding into `{top,right,bottom,left}` | `number` or object | `PaddingValues` |
+| `useEdgeBoxCssPosition` | Return low-level anchored CSS edge coordinates | `position`, `paddingValues` | `cssEdgePosition()`, `initialCssPosition` |
 | `useEdgeBoxPosition` | Initial anchored placement + viewport-resize recalc | `position`, `width/height`, `padding`, `safeZone` | `edges`, `updateEdges`, `recalculate`, `resetPosition` |
 | `useEdgeBoxDrag` | Dragging + boundary clamping | `edges`, `updateEdges`, `elementRef`, `safeZone` | `dragOffset`, `handleMouseDown`, `handleTouchStart`, `resetDragOffset`, `cancelDrag`, flags |
 | `useEdgeBoxResize` | Resizing + constraints + safe-zone clamping | `edges`, `updateEdges`, `baseOffset`, constraints | `dimensions`, `resizeOffset`, `handleResizeStart`, `resetSize(options?)`, flags |
@@ -385,10 +400,53 @@ Both `useEdgeBoxDrag` and `useEdgeBoxResize` support `commitToEdges`:
 
 Normalizes a `number` or shorthand object into `PaddingValues`.
 
+Use this hook when you want one consistent padding object to pass into positioning helpers. It is especially useful when your component accepts shorthand config but the rest of your layout math expects explicit `top/right/bottom/left` numbers.
+
+Accepted input:
+
+- `number`
+- object shorthand:
+  - `all?: number`
+  - `horizontal?: number`
+  - `vertical?: number`
+  - `top?: number`
+  - `right?: number`
+  - `bottom?: number`
+  - `left?: number`
+
+Resolution order:
+
+- If you pass a `number`, all four sides get that number.
+- If you pass an object, the hook resolves values in this order:
+  - `all` as the broad default
+  - `horizontal` / `vertical` override `all`
+  - side-specific values (`top`, `right`, `bottom`, `left`) override everything else for that side
+- Missing object values fall back to `24`.
+
+Returns:
+
+- `PaddingValues`
+  - `top: number`
+  - `right: number`
+  - `bottom: number`
+  - `left: number`
+
 ```ts
 const paddingValues = useEdgeBoxPaddingValues({ all: 24, horizontal: 32 });
 // => { top: 24, right: 32, bottom: 24, left: 32 }
 ```
+
+More examples:
+
+```ts
+useEdgeBoxPaddingValues(16);
+// => { top: 16, right: 16, bottom: 16, left: 16 }
+
+useEdgeBoxPaddingValues({ all: 24, vertical: 40, left: 8 });
+// => { top: 40, right: 24, bottom: 40, left: 8 }
+```
+
+This hook is memoized, so the resolved object stays stable until the `padding` input changes.
 
 ### `useEdgeBoxPosition(options)`
 
@@ -453,7 +511,7 @@ Auto focus means: if the box is already inside the `safeZone` and ends up *near*
 - `autoFocus?: EdgeBoxAutoFocus` (default: `unset`)
 - `autoFocusSensitivity?: number` (default: `5`) – interpreted as a **percentage of the viewport** (higher = easier snapping)
 
-Supported presets (see `src/autoFocus.ts` for the authoritative list):
+Supported presets (see `src/internal/edgeBoxAutoFocus.ts` for the authoritative list):
 
 - `unset`
 - `all`, `full`
@@ -495,7 +553,6 @@ Returns:
 - `isResizing`, `resizeDirection`
 - `handleResizeStart(direction, e)` – accepts `React.MouseEvent | React.TouchEvent`
 - `resetSize(options?)` – cancels active resize state and restores the current `initialWidth` / `initialHeight`, subject to current min/max and viewport-safe constraints
-- `resetDimensions(options?)` – compatibility alias for `resetSize(options?)`
 
 Reset options:
 
@@ -546,10 +603,69 @@ Returns:
 
 Low-level helper that returns “CSS edge style” (`left`/`right`/`top`/`bottom`) for an anchored position. Most components in this repo use `useEdgeBoxPosition` directly instead.
 
+Use this hook when you specifically want CSS edge properties for rendering logic, but you do **not** need the full committed `edges` model from `useEdgeBoxPosition`.
+
+Typical cases:
+
+- low-level component primitives
+- CSS-driven anchored layouts
+- initial placement helpers
+- custom components that want to render with `right`/`bottom` instead of converting everything to `left`/`top`
+
 Options:
 
 - `position: EdgePosition`
 - `paddingValues: PaddingValues`
+
+Supported `position` values:
+
+- `top-left`
+- `top-center`
+- `top-right`
+- `bottom-left`
+- `bottom-center`
+- `bottom-right`
+
+Returns:
+
+- `cssEdgePosition()` – recalculates the current CSS edge position
+- `initialCssPosition` – the initial calculated CSS edge position
+
+Behavior notes:
+
+- left-anchored positions return `left`
+- right-anchored positions return `right`
+- top-anchored positions return `top`
+- bottom-anchored positions return `bottom`
+- centered positions use `left: window.innerWidth / 2`
+- on the server, the fallback is `{ left: 0, top: 0 }`
+
+Example:
+
+```tsx
+const paddingValues = useEdgeBoxPaddingValues({ top: 16, right: 24, bottom: 16, left: 24 });
+
+const { initialCssPosition } = useEdgeBoxCssPosition({
+  position: "bottom-right",
+  paddingValues,
+});
+
+// initialCssPosition === { right: 24, bottom: 16 }
+```
+
+Example with center anchoring:
+
+```tsx
+const { cssEdgePosition } = useEdgeBoxCssPosition({
+  position: "top-center",
+  paddingValues: useEdgeBoxPaddingValues(24),
+});
+
+const anchoredStyle = cssEdgePosition();
+// => { left: window.innerWidth / 2, top: 24 }
+```
+
+For most interactive floating UI, prefer `useEdgeBoxPosition`, because it gives you the higher-level `edges` model plus recalculation and manual updates.
 
 ## Recipe: draggable + resizable floating panel
 

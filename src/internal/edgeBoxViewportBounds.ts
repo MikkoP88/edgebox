@@ -1,4 +1,4 @@
-import type { Dimensions, Position } from "./types";
+import type { Dimensions, Position } from "../edgeBoxTypes";
 
 export interface ViewportSafeBounds {
   minLeft: number;

@@ -20,8 +20,6 @@ export interface UseEdgeBoxCssPositionResult {
   initialCssPosition: CssEdgePosition;
 }
 
-export type UseCssEdgePositionResult = UseEdgeBoxCssPositionResult;
-
 /**
  * Custom hook that calculates CSS edge position for boundary calculations.
  */

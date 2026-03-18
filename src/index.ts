@@ -7,24 +7,42 @@
  * type/name collisions (e.g. multiple `Position`/`Dimensions` types).
  */
 
-export { useEdgeBoxPaddingValues } from "./useEdgeBoxPaddingValues";
-export type { PaddingValue, PaddingValues } from "./useEdgeBoxPaddingValues";
+export { useEdgeBoxPaddingValues } from "./hooks/useEdgeBoxPaddingValues";
+export type { PaddingValue, PaddingValues } from "./hooks/useEdgeBoxPaddingValues";
 
-export { useEdgeBoxCssPosition } from "./useEdgeBoxCssPosition";
-export type { CssEdgePosition, EdgePosition, UseEdgeBoxCssPositionResult, UseCssEdgePositionResult } from "./useEdgeBoxCssPosition";
+export { useEdgeBoxCssPosition } from "./hooks/useEdgeBoxCssPosition";
+export type {
+  CssEdgePosition,
+  EdgePosition,
+  UseEdgeBoxCssPositionResult,
+} from "./hooks/useEdgeBoxCssPosition";
 
-export type { ResizeDirection } from "./types";
+export type { ResizeDirection } from "./edgeBoxTypes";
 
-export { useEdgeBoxPosition } from "./useEdgeBoxPosition";
-export type { EdgeBoxEdges } from "./useEdgeBoxPosition";
+export { useEdgeBoxPosition } from "./hooks/useEdgeBoxPosition";
+export type {
+  EdgeBoxEdges,
+  UseEdgeBoxPositionOptions,
+  UseEdgeBoxPositionResult,
+} from "./hooks/useEdgeBoxPosition";
 
-export type { EdgeBoxAutoFocus } from "./autoFocus";
+export type { EdgeBoxAutoFocus } from "./internal/edgeBoxAutoFocus";
 
-export { useEdgeBoxDrag } from "./useEdgeBoxDrag";
+export { useEdgeBoxDrag } from "./hooks/useEdgeBoxDrag";
+export type { UseEdgeBoxDragOptions, UseEdgeBoxDragResult } from "./hooks/useEdgeBoxDrag";
 
-export { useEdgeBoxResize } from "./useEdgeBoxResize";
+export { useEdgeBoxResize } from "./hooks/useEdgeBoxResize";
+export type {
+  ResetSizeOptions,
+  UseEdgeBoxResizeOptions,
+  UseEdgeBoxResizeResult,
+} from "./hooks/useEdgeBoxResize";
 
-export { useEdgeBoxTransform } from "./useEdgeBoxTransform";
-export type { UseEdgeBoxTransformOptions, UseEdgeBoxTransformResult } from "./useEdgeBoxTransform";
+export { useEdgeBoxTransform } from "./hooks/useEdgeBoxTransform";
+export type { UseEdgeBoxTransformOptions, UseEdgeBoxTransformResult } from "./hooks/useEdgeBoxTransform";
 
-export { useEdgeBoxViewportClamp } from "./useEdgeBoxViewportClamp";
+export { useEdgeBoxViewportClamp } from "./hooks/useEdgeBoxViewportClamp";
+export type {
+  UseEdgeBoxViewportClampOptions,
+  UseEdgeBoxViewportClampResult,
+} from "./hooks/useEdgeBoxViewportClamp";

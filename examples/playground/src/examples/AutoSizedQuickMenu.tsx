@@ -3,13 +3,13 @@ import {
   useEdgeBoxDrag,
   useEdgeBoxPosition,
   useEdgeBoxViewportClamp,
-  usePaddingValues,
+  useEdgeBoxPaddingValues,
 } from "@edgebox-lite/react";
 
 export function AutoSizedQuickMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const paddingValues = usePaddingValues({ all: 24, right: 32 });
+  const paddingValues = useEdgeBoxPaddingValues({ all: 24, right: 32 });
   const safeZone = 16;
 
   const [open, setOpen] = useState(false);

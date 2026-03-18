@@ -3,7 +3,7 @@ import {
   useEdgeBoxDrag,
   useEdgeBoxPosition,
   useEdgeBoxResize,
-  usePaddingValues,
+  useEdgeBoxPaddingValues,
   type EdgeBoxAutoFocus,
   type ResizeDirection,
 } from "@edgebox-lite/react";
@@ -35,7 +35,7 @@ function Handle({ dir, onStart }: { dir: ResizeDirection; onStart: (dir: ResizeD
 export function AutoFocusSnapBox() {
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const paddingValues = usePaddingValues(24);
+  const paddingValues = useEdgeBoxPaddingValues(24);
   const safeZone = 16;
 
   const [autoFocus, setAutoFocus] = useState<EdgeBoxAutoFocus>("corners");

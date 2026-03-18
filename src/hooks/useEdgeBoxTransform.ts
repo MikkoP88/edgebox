@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Position } from "./types";
+import type { Position } from "../edgeBoxTypes";
 
 const ZERO_POSITION: Position = { x: 0, y: 0 };
 

@@ -1,16 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { EdgePosition } from "./useEdgeBoxCssPosition";
+import type { EdgePosition } from "./useEdgeBoxCssPosition";
 import { useEdgeBoxPaddingValues, type PaddingValue, type PaddingValues } from "./useEdgeBoxPaddingValues";
-import { areEdgeBoxRectsEqual, mergeEdgeBoxEdges, toEdgeBoxEdges } from "./edgeBoxEdges";
+import { areEdgeBoxRectsEqual, mergeEdgeBoxEdges, toEdgeBoxEdges } from "../edgeBoxEdges";
 import {
   DEFAULT_DISABLE_AUTO_RECALC,
   DEFAULT_EDGE_PADDING,
   DEFAULT_EDGE_POSITION,
   DEFAULT_SAFE_ZONE,
-} from "./constants";
+} from "../internal/edgeBoxConstants";
+import { clampTopLeftToViewport } from "../internal/edgeBoxViewportBounds";
 
-export type { CenterPoint, EdgeBoxEdges } from "./edgeBoxEdges";
-import type { EdgeBoxEdges } from "./edgeBoxEdges";
+export type { CenterPoint, EdgeBoxEdges } from "../edgeBoxEdges";
+import type { EdgeBoxEdges } from "../edgeBoxEdges";
 
 export interface UseEdgeBoxPositionOptions {
   position?: EdgePosition;
@@ -86,6 +87,42 @@ function calculateEdges(
   return toEdgeBoxEdges({ left, right, top, bottom });
 }
 
+function clampManualEdgesToViewport(
+  edges: EdgeBoxEdges,
+  width: number | undefined,
+  height: number | undefined,
+  safeZone: number,
+): EdgeBoxEdges | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const derivedWidth = edges.right - edges.left;
+  const derivedHeight = edges.bottom - edges.top;
+  const nextWidth = width ?? (derivedWidth > 0 ? derivedWidth : undefined);
+  const nextHeight = height ?? (derivedHeight > 0 ? derivedHeight : undefined);
+
+  if (nextWidth === undefined || nextHeight === undefined) {
+    return null;
+  }
+
+  const { x: left, y: top } = clampTopLeftToViewport(
+    edges.left,
+    edges.top,
+    { width: nextWidth, height: nextHeight },
+    safeZone,
+    window.innerWidth,
+    window.innerHeight,
+  );
+
+  return toEdgeBoxEdges({
+    left,
+    top,
+    right: left + nextWidth,
+    bottom: top + nextHeight,
+  });
+}
+
 export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): UseEdgeBoxPositionResult {
   const {
     position = DEFAULT_EDGE_POSITION,
@@ -106,37 +143,21 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
 
   const recalculate = useCallback(() => {
     if (isManualPositionRef.current && typeof window !== 'undefined') {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
       setEdges(prev => {
-        const derivedWidth = prev.right - prev.left;
-        const derivedHeight = prev.bottom - prev.top;
-        const w = width ?? (derivedWidth > 0 ? derivedWidth : undefined);
-        const h = height ?? (derivedHeight > 0 ? derivedHeight : undefined);
-
-        if (w !== undefined && h !== undefined) {
-          const minLeft = safeZone;
-          const maxLeft = viewportWidth - safeZone - w;
-          const minTop = safeZone;
-          const maxTop = viewportHeight - safeZone - h;
-
-          const left = Math.max(minLeft, Math.min(maxLeft, prev.left));
-          const top = Math.max(minTop, Math.min(maxTop, prev.top));
-
-          const next = {
-            left,
-            top,
-            right: left + w,
-            bottom: top + h,
-          };
-
-          return toEdgeBoxEdges(next);
+        const clamped = clampManualEdgesToViewport(prev, width, height, safeZone);
+        if (clamped) {
+          if (areEdgeBoxRectsEqual(prev, clamped)) {
+            return prev;
+          }
+          return clamped;
         }
 
         // If we can't determine a box size, fall back to the default positional calculation.
-        const next = calculateEdges(position, width, height, paddingValues, safeZone);
-        return next;
+        const fallback = calculateEdges(position, width, height, paddingValues, safeZone);
+        if (areEdgeBoxRectsEqual(prev, fallback)) {
+          return prev;
+        }
+        return fallback;
       });
       return;
     }
@@ -151,7 +172,13 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
   }, [position, width, height, paddingValues, safeZone]);
 
   const updateEdges = useCallback((newEdges: Partial<EdgeBoxEdges>, manualPosition = true) => {
-    setEdges(prev => mergeEdgeBoxEdges(prev, newEdges));
+    setEdges(prev => {
+      const next = mergeEdgeBoxEdges(prev, newEdges);
+      if (areEdgeBoxRectsEqual(prev, next)) {
+        return prev;
+      }
+      return next;
+    });
 
     isManualPositionRef.current = manualPosition;
   }, []);
@@ -169,6 +196,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
 
   useEffect(() => {
     if (disableAutoRecalc) return;
+    if (typeof window === "undefined") return;
 
     const handleResize = () => {
       recalculate();

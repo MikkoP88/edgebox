@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { EdgeBoxEdges } from "./useEdgeBoxPosition";
-import { applyEdgeBoxAutoFocus, type EdgeBoxAutoFocus } from "./autoFocus";
+import type { EdgeBoxEdges } from "../edgeBoxEdges";
+import { applyEdgeBoxAutoFocus, type EdgeBoxAutoFocus } from "../internal/edgeBoxAutoFocus";
 import {
   DEFAULT_AUTO_FOCUS,
   DEFAULT_AUTO_FOCUS_SENSITIVITY,
@@ -12,16 +12,16 @@ import {
   DEFAULT_MIN_HEIGHT,
   DEFAULT_VIEWPORT_FALLBACK_HEIGHT,
   DEFAULT_VIEWPORT_FALLBACK_WIDTH,
-} from "./constants";
+} from "../internal/edgeBoxConstants";
 import {
   clampClientPointToViewport,
   getStartInteractionPoint,
   getTouchInteractionPointById,
   MOUSE_EVENT_ID,
-} from "./interaction";
-import type { ResizeDirection, Dimensions, Position } from "./types";
-import { useLatestRef } from "./useLatestRef";
-import { clampDimensionsToViewport, clampTopLeftToViewport } from "./viewportBounds";
+} from "../internal/edgeBoxInteraction";
+import type { ResizeDirection, Dimensions, Position } from "../edgeBoxTypes";
+import { useLatestRef } from "../internal/useLatestRef";
+import { clampDimensionsToViewport, clampTopLeftToViewport } from "../internal/edgeBoxViewportBounds";
 
 export interface UseEdgeBoxResizeOptions {
   edges: EdgeBoxEdges;
@@ -51,7 +51,6 @@ export interface UseEdgeBoxResizeResult {
   isResizing: boolean;
   resizeDirection: ResizeDirection | null;
   handleResizeStart: (direction: ResizeDirection, e: React.MouseEvent | React.TouchEvent) => void;
-  resetDimensions: (options?: ResetSizeOptions) => void;
   resetSize: (options?: ResetSizeOptions) => void;
 }
 
@@ -95,7 +94,13 @@ export function useEdgeBoxResize({
 
   useEffect(() => {
     if (isResizing) return;
-    setDimensions({ width: initialWidth, height: initialHeight });
+    setDimensions(prev => {
+      if (prev.width === initialWidth && prev.height === initialHeight) {
+        return prev;
+      }
+
+      return { width: initialWidth, height: initialHeight };
+    });
   }, [initialWidth, initialHeight, isResizing]);
 
   const applyResize = useCallback((dx: number, dy: number) => {
@@ -116,8 +121,9 @@ export function useEdgeBoxResize({
     const viewportHeight = window.innerHeight;
 
     const base = baseOffsetRef.current;
-    const startLeft = edges.left + base.x + startOffsetX;
-    const startTop = edges.top + base.y + startOffsetY;
+    const latestEdges = edgesRef.current;
+    const startLeft = latestEdges.left + base.x + startOffsetX;
+    const startTop = latestEdges.top + base.y + startOffsetY;
     const startRight = startLeft + startWidth;
     const startBottom = startTop + startHeight;
 
@@ -165,7 +171,7 @@ export function useEdgeBoxResize({
 
     setDimensions({ width: newWidth, height: newHeight });
     setResizeOffset({ x: newOffsetX, y: newOffsetY });
-  }, [resizeDirection, edges, minWidth, minHeight, maxWidth, maxHeight, safeZone]);
+  }, [resizeDirection, edgesRef, minWidth, minHeight, maxWidth, maxHeight, safeZone]);
 
   const handleResizeStart: UseEdgeBoxResizeResult["handleResizeStart"] = useCallback((
     direction: ResizeDirection,
@@ -309,8 +315,6 @@ export function useEdgeBoxResize({
     }
   }, [initialWidth, initialHeight, maxHeight, maxWidth, minHeight, minWidth, onCommitSize, safeZone, updateEdges]);
 
-  const resetDimensions = resetSize;
-
   useEffect(() => {
     if (!isResizing) return;
 
@@ -377,7 +381,6 @@ export function useEdgeBoxResize({
     isResizing,
     resizeDirection,
     handleResizeStart,
-    resetDimensions,
     resetSize,
   };
 }
