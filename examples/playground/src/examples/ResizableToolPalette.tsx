@@ -7,7 +7,13 @@ import {
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
-function Handle({ dir, onStart }: { dir: ResizeDirection; onStart: (dir: ResizeDirection, e: React.MouseEvent) => void }) {
+function Handle({
+  dir,
+  onStart,
+}: {
+  dir: ResizeDirection;
+  onStart: (dir: ResizeDirection, e: React.MouseEvent | React.TouchEvent) => void;
+}) {
   const size = 10;
   const common: React.CSSProperties = {
     position: "absolute",
@@ -34,6 +40,7 @@ function Handle({ dir, onStart }: { dir: ResizeDirection; onStart: (dir: ResizeD
       aria-label={`Resize ${dir}`}
       style={{ ...common, ...pos[dir] }}
       onMouseDown={(e) => onStart(dir, e)}
+      onTouchStart={(e) => onStart(dir, e)}
     />
   );
 }
@@ -43,6 +50,7 @@ export function ResizableToolPalette() {
   const safeZone = 16;
 
   const [committedSize, setCommittedSize] = useState({ width: 360, height: 220 });
+  const [lastResize, setLastResize] = useState("No committed resize yet");
 
   const { edges, updateEdges } = useEdgeBoxPosition({
     position: "top-left",
@@ -52,7 +60,7 @@ export function ResizableToolPalette() {
     safeZone,
   });
 
-  const { dimensions, resizeOffset, isResizing, handleResizeStart } = useEdgeBoxResize({
+  const { dimensions, resizeOffset, isResizing, handleResizeStart, resetSize } = useEdgeBoxResize({
     edges,
     updateEdges,
     commitToEdges: true,
@@ -61,10 +69,20 @@ export function ResizableToolPalette() {
     initialHeight: committedSize.height,
     minWidth: 260,
     minHeight: 160,
+    maxWidth: 520,
+    maxHeight: 360,
     safeZone,
+    onResizeEnd: (finalDimensions, finalOffset) => {
+      setLastResize(
+        `${Math.round(finalDimensions.width)}×${Math.round(finalDimensions.height)} at ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}`
+      );
+    },
   });
 
-  const { transform } = useEdgeBoxTransform({ resizeOffset });
+  const { transform } = useEdgeBoxTransform({
+    resizeOffset,
+    isResizing,
+  });
 
   const style: React.CSSProperties = {
     position: "fixed",
@@ -85,8 +103,25 @@ export function ResizableToolPalette() {
     <div style={style}>
       <strong>ResizableToolPalette</strong>
       <p style={{ margin: "10px 0 0", opacity: 0.9, lineHeight: 1.25 }}>
-        Drag the white dots to resize (8 directions). Size commits on mouse up.
+        Resize from any handle with mouse or touch. This demo shows committed resize, min/max constraints, and reset flows.
       </p>
+
+      <div style={{ marginTop: 12, fontSize: 13, lineHeight: 1.35, opacity: 0.92 }}>
+        <div>
+          Size: <code>{Math.round(dimensions.width)}×{Math.round(dimensions.height)}</code>
+        </div>
+        <div>
+          Last commit: <code>{lastResize}</code>
+        </div>
+        <div>
+          Constraints: <code>260×160</code> min, <code>520×360</code> max
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        <button onClick={() => resetSize({ commit: true })}>Reset size</button>
+        <button onClick={() => setCommittedSize({ width: 420, height: 280 })}>Preset 420×280</button>
+      </div>
 
       {([
         "n",

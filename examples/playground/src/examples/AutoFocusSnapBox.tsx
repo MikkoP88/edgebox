@@ -4,11 +4,18 @@ import {
   useEdgeBoxPosition,
   useEdgeBoxResize,
   useEdgeBoxPaddingValues,
+  useEdgeBoxTransform,
   type EdgeBoxAutoFocus,
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
-function Handle({ dir, onStart }: { dir: ResizeDirection; onStart: (dir: ResizeDirection, e: React.MouseEvent) => void }) {
+function Handle({
+  dir,
+  onStart,
+}: {
+  dir: ResizeDirection;
+  onStart: (dir: ResizeDirection, e: React.MouseEvent | React.TouchEvent) => void;
+}) {
   const size = 10;
   const common: React.CSSProperties = {
     position: "absolute",
@@ -29,7 +36,13 @@ function Handle({ dir, onStart }: { dir: ResizeDirection; onStart: (dir: ResizeD
     sw: { bottom: -size / 2, left: -size / 2, cursor: "nesw-resize" },
   };
 
-  return <div style={{ ...common, ...pos[dir] }} onMouseDown={(e) => onStart(dir, e)} />;
+  return (
+    <div
+      style={{ ...common, ...pos[dir] }}
+      onMouseDown={(e) => onStart(dir, e)}
+      onTouchStart={(e) => onStart(dir, e)}
+    />
+  );
 }
 
 export function AutoFocusSnapBox() {
@@ -40,6 +53,7 @@ export function AutoFocusSnapBox() {
 
   const [autoFocus, setAutoFocus] = useState<EdgeBoxAutoFocus>("corners");
   const [committedSize, setCommittedSize] = useState({ width: 360, height: 220 });
+  const [lastSnap, setLastSnap] = useState("No snap commit yet");
 
   const { edges, updateEdges } = useEdgeBoxPosition({
     position: "top-center",
@@ -57,6 +71,9 @@ export function AutoFocusSnapBox() {
     safeZone,
     autoFocus,
     autoFocusSensitivity: 8,
+    onDragEnd: (finalOffset) => {
+      setLastSnap(`Drag ended near ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}`);
+    },
   });
 
   const { dimensions, resizeOffset, isResizing, handleResizeStart } = useEdgeBoxResize({
@@ -72,12 +89,18 @@ export function AutoFocusSnapBox() {
     safeZone,
     autoFocus,
     autoFocusSensitivity: 8,
+    onResizeEnd: (finalDimensions, finalOffset) => {
+      setLastSnap(
+        `Resize snapped to ${Math.round(finalDimensions.width)}×${Math.round(finalDimensions.height)} at ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}`
+      );
+    },
   });
 
-  const currentOffset = {
-    x: dragOffset.x + (isResizing ? resizeOffset.x : 0),
-    y: dragOffset.y + (isResizing ? resizeOffset.y : 0),
-  };
+  const { transform } = useEdgeBoxTransform({
+    dragOffset,
+    resizeOffset,
+    isResizing,
+  });
 
   const style: React.CSSProperties = {
     position: "fixed",
@@ -85,7 +108,7 @@ export function AutoFocusSnapBox() {
     top: edges.top,
     width: dimensions.width,
     height: dimensions.height,
-    transform: `translate3d(${currentOffset.x}px, ${currentOffset.y}px, 0)`,
+    transform,
     background: "rgba(255,255,255,0.07)",
     border: "1px solid rgba(255,255,255,0.18)",
     borderRadius: 16,
@@ -108,11 +131,15 @@ export function AutoFocusSnapBox() {
               <option value="vertical">vertical</option>
               <option value="all">all</option>
               <option value="full">full</option>
+              <option value="1,2,10">1,2,10</option>
             </select>
           </label>
         </div>
         <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9, lineHeight: 1.25 }}>
           Drag/resize near a snap target, release, and EdgeBox will adjust the final committed edges.
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
+          Last snap: <code>{lastSnap}</code>
         </div>
       </div>
 

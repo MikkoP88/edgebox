@@ -54,16 +54,26 @@ export function DragResizeWindow() {
   const safeZone = 16;
 
   const [committedSize, setCommittedSize] = useState({ width: 420, height: 260 });
+  const [autoRecalc, setAutoRecalc] = useState(true);
+  const [eventSummary, setEventSummary] = useState("Try dragging or resizing the panel.");
 
-  const { edges, updateEdges } = useEdgeBoxPosition({
+  const { edges, updateEdges, recalculate, resetPosition } = useEdgeBoxPosition({
     position: "bottom-center",
     width: committedSize.width,
     height: committedSize.height,
     padding: paddingValues,
     safeZone,
+    disableAutoRecalc: !autoRecalc,
   });
 
-  const { dragOffset, isDragging, isPendingDrag, handleMouseDown, handleTouchStart } = useEdgeBoxDrag({
+  const {
+    dragOffset,
+    isDragging,
+    isPendingDrag,
+    handleMouseDown,
+    handleTouchStart,
+    cancelDrag,
+  } = useEdgeBoxDrag({
     edges,
     updateEdges,
     commitToEdges: true,
@@ -71,9 +81,12 @@ export function DragResizeWindow() {
     safeZone,
     autoFocus: "corners",
     autoFocusSensitivity: 6,
+    onDragEnd: (finalOffset) => {
+      setEventSummary(`Drag committed with offset ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}.`);
+    },
   });
 
-  const { dimensions, resizeOffset, isResizing, handleResizeStart } = useEdgeBoxResize({
+  const { dimensions, resizeOffset, isResizing, handleResizeStart, resetSize } = useEdgeBoxResize({
     edges,
     updateEdges,
     commitToEdges: true,
@@ -86,6 +99,11 @@ export function DragResizeWindow() {
     safeZone,
     autoFocus: "corners",
     autoFocusSensitivity: 6,
+    onResizeEnd: (finalDimensions, finalOffset) => {
+      setEventSummary(
+        `Resize committed to ${Math.round(finalDimensions.width)}×${Math.round(finalDimensions.height)} at ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}.`
+      );
+    },
   });
 
   const { transform } = useEdgeBoxTransform({
@@ -119,17 +137,22 @@ export function DragResizeWindow() {
     cursor: isDragging ? "grabbing" : "grab",
   };
 
+  const handleResetAll = () => {
+    cancelDrag();
+    resetPosition();
+    resetSize({ commit: true });
+    setEventSummary("Position and size reset to their anchored defaults.");
+  };
+
   return (
     <div
       ref={windowRef}
       style={style}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
     >
-      <div style={headerStyle}>
+      <div style={headerStyle} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}>
         <strong>DragResizeWindow</strong>
         <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-          Drag anywhere. Resize from corners/edges. Snaps to corners on release.
+          Drag from the header. Resize from corners/edges. Snaps to corners on release.
         </div>
       </div>
 
@@ -138,6 +161,20 @@ export function DragResizeWindow() {
           Key idea: drag and resize both produce offsets. When you use both together,
           compose them into one <code>transform</code>.
         </p>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          <button onClick={() => resetPosition()}>Reset position</button>
+          <button onClick={() => resetSize({ commit: true })}>Reset size</button>
+          <button onClick={() => recalculate()}>Manual recalc</button>
+          <button onClick={handleResetAll}>Reset all</button>
+          <button onClick={() => setAutoRecalc((value) => !value)}>
+            Auto recalc: {autoRecalc ? "on" : "off"}
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9 }}>
+          {eventSummary}
+        </div>
       </div>
 
       {([
