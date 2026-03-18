@@ -23,19 +23,19 @@ type ExampleId =
 const exampleMeta: Record<ExampleId, { label: string; features: string[] }> = {
   "simple-position": {
     label: "Simple anchored box",
-    features: ["useEdgeBoxPosition", "updateEdges", "resetPosition"],
+    features: ["useEdgeBox", "updateEdges", "resetPosition"],
   },
   "simple-drag": {
     label: "Simple draggable box",
-    features: ["useEdgeBoxDrag", "commitToEdges", "useEdgeBoxTransform"],
+    features: ["useEdgeBox", "commitToEdges", "getDragProps()"],
   },
   "simple-resize": {
     label: "Simple resizable box",
-    features: ["useEdgeBoxResize", "single resize handle", "onCommitSize"],
+    features: ["useEdgeBox", "single resize handle", "getResizeHandleProps()"],
   },
   "drag-resize": {
     label: "Drag + resize window",
-    features: ["commitToEdges", "baseOffset", "resetPosition", "resetSize", "recalculate"],
+    features: ["useEdgeBox", "resetPosition", "resetSize", "recalculate", "autoFocus"],
   },
   draggable: {
     label: "Draggable sticky note",

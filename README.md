@@ -69,6 +69,7 @@ npm run dev
 
 ```ts
 import {
+  useEdgeBox,
   useEdgeBoxPaddingValues,
   useEdgeBoxCssPosition,
   useEdgeBoxPosition,
@@ -83,6 +84,7 @@ All exported hooks in the package entrypoint:
 
 | Hook | Status | Primary purpose |
 |---|---|---|
+| `useEdgeBox` | Exported | High-level hook that composes position, drag, resize, and transform into one simpler API |
 | `useEdgeBoxPaddingValues` | Exported | Normalize padding shorthand into resolved edge values |
 | `useEdgeBoxCssPosition` | Exported | Compute low-level CSS `left`/`right`/`top`/`bottom` anchor values |
 | `useEdgeBoxPosition` | Exported | Track committed viewport `edges` and recalculate/clamp them |
@@ -93,86 +95,55 @@ All exported hooks in the package entrypoint:
 
 In other words, the README documents every hook currently exported by `src/index.ts`.
 
-## Quick start (drag + resize)
+## Quick start (`useEdgeBox`)
 
-Minimal pattern:
+`useEdgeBox` is the simpler primary API. It composes:
 
-1) `useEdgeBoxPosition` gives you committed `edges`.
-2) `useEdgeBoxDrag` / `useEdgeBoxResize` give you temporary offsets.
-3) You render `position: fixed` with `left/top` from `edges`, and apply a `transform` using offsets.
+1) committed position
+2) drag state
+3) resize state
+4) final `transform`
+5) ready-to-use drag / resize handle props
 
 ```tsx
-import { useMemo, useRef, useState } from "react";
-import {
-  useEdgeBoxPosition,
-  useEdgeBoxDrag,
-  useEdgeBoxResize,
-  useEdgeBoxPaddingValues,
-  useEdgeBoxTransform,
-} from "@edgebox-lite/react";
+import { useEdgeBox } from "@edgebox-lite/react";
 
 export function FloatingWindow() {
-  const ref = useRef<HTMLDivElement>(null);
-  const paddingValues = useEdgeBoxPaddingValues(24);
-  const safeZone = 16;
-
-  const [committedSize, setCommittedSize] = useState({ width: 420, height: 260 });
-
-  const { edges, updateEdges } = useEdgeBoxPosition({
+  const {
+    ref,
+    style,
+    isDragging,
+    isPendingDrag,
+    isResizing,
+    getDragProps,
+    getResizeHandleProps,
+  } = useEdgeBox({
     position: "bottom-right",
-    width: committedSize.width,
-    height: committedSize.height,
-    padding: paddingValues,
-    safeZone,
-  });
-
-  const { dragOffset, handleMouseDown, handleTouchStart, isDragging, isPendingDrag } = useEdgeBoxDrag({
-    edges,
-    updateEdges,
+    width: 420,
+    height: 260,
+    padding: 24,
+    safeZone: 16,
     commitToEdges: true,
-    elementRef: ref,
-    safeZone,
-  });
-
-  const { dimensions, resizeOffset, isResizing, handleResizeStart } = useEdgeBoxResize({
-    edges,
-    updateEdges,
-    commitToEdges: true,
-    onCommitSize: setCommittedSize,
-    baseOffset: dragOffset,
-    initialWidth: committedSize.width,
-    initialHeight: committedSize.height,
     minWidth: 300,
     minHeight: 200,
-    safeZone,
+    autoFocus: "corners",
   });
-
-  const { transform } = useEdgeBoxTransform({
-    dragOffset,
-    resizeOffset,
-    isResizing,
-  });
-
-  const style = useMemo((): React.CSSProperties => ({
-    position: "fixed",
-    left: edges.left,
-    top: edges.top,
-    width: dimensions.width,
-    height: dimensions.height,
-    transform,
-    touchAction: "none",
-  }), [edges, dimensions, transform]);
 
   return (
-    <div ref={ref} style={style} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}>
+    <div ref={ref} style={style}>
+      <div {...getDragProps()}>
+        Drag me
+      </div>
       <div>{isDragging ? "Dragging" : isPendingDrag ? "Hold…" : isResizing ? "Resizing" : "Idle"}</div>
-      <button onMouseDown={(e) => handleResizeStart("se", e)} onTouchStart={(e) => handleResizeStart("se", e)}>
+      <button {...getResizeHandleProps("se")}>
         Resize (bottom-right)
       </button>
     </div>
   );
 }
 ```
+
+If you want lower-level control, the individual hooks are still available and documented below.
 
 Touch note:
 
@@ -300,6 +271,7 @@ flowchart LR
 
 | Hook | What it solves | You give it | You get back |
 |---|---|---|---|
+| `useEdgeBox` | High-level common-case EdgeBox wiring | position, size, drag/resize options | `ref`, `style`, drag/resize props, state flags, reset helpers |
 | `useEdgeBoxPaddingValues` | Turn shorthand padding into `{top,right,bottom,left}` | `number` or object | `PaddingValues` |
 | `useEdgeBoxCssPosition` | Return low-level anchored CSS edge coordinates | `position`, `paddingValues` | `cssEdgePosition()`, `initialCssPosition` |
 | `useEdgeBoxPosition` | Initial anchored placement + viewport-resize recalc | `position`, `width/height`, `padding`, `safeZone` | `edges`, `updateEdges`, `recalculate`, `resetPosition` |
@@ -395,6 +367,64 @@ Both `useEdgeBoxDrag` and `useEdgeBoxResize` support `commitToEdges`:
   - you can treat the offsets as the “source of truth” and persist them externally
 
 ## Hook reference
+
+### `useEdgeBox(options)`
+
+High-level composite hook for the common EdgeBox pattern.
+
+Use this when you want the simplest API for a draggable and/or resizable floating element without manually composing `useEdgeBoxPosition`, `useEdgeBoxDrag`, `useEdgeBoxResize`, and `useEdgeBoxTransform` yourself.
+
+Options:
+
+- `position?: EdgePosition` – anchored start position (default: `bottom-right`)
+- `width?: number`, `height?: number` – initial box size
+- `initialWidth?: number`, `initialHeight?: number` – aliases for initial size when you prefer resize-style naming
+- `padding?: PaddingValue` – anchored inset (default: `24`)
+- `safeZone?: number` – boundary inset (default: `0`)
+- `disableAutoRecalc?: boolean` – disable automatic viewport resize recalculation
+- `draggable?: boolean` (default: `true`)
+- `resizable?: boolean` (default: `true`)
+- `commitToEdges?: boolean` (default: `false`)
+- `minWidth?`, `minHeight?`, `maxWidth?`, `maxHeight?` – resize constraints
+- `autoFocus?: EdgeBoxAutoFocus`
+- `autoFocusSensitivity?: number`
+- `dragStartDistance?`, `dragStartDelay?`, `dragEndEventDelay?`
+- `baseTransform?: string` – prepend a transform before the EdgeBox `translate3d(...)`
+- `onCommitSize?`, `onDragEnd?`, `onResizeEnd?`
+
+Returns:
+
+- `ref`
+- `style`
+- `edges`, `dimensions`
+- `dragOffset`, `resizeOffset`, `offset`, `transform`
+- `isDragging`, `isPendingDrag`, `isResizing`, `resizeDirection`
+- `updateEdges(...)`, `recalculate()`, `resetPosition()`
+- `resetDragOffset()`, `cancelDrag()`, `resetSize(options?)`
+- `handleMouseDown(e)`, `handleTouchStart(e)`, `handleResizeStart(direction, e)`
+- `getDragProps()` – returns drag bindings for a drag handle or container
+- `getResizeHandleProps(direction)` – returns bindings for a resize handle
+
+Example:
+
+```tsx
+const {
+  ref,
+  style,
+  getDragProps,
+  getResizeHandleProps,
+  resetPosition,
+  resetSize,
+} = useEdgeBox({
+  position: "bottom-right",
+  width: 420,
+  height: 260,
+  padding: 24,
+  safeZone: 16,
+  commitToEdges: true,
+  autoFocus: "corners",
+});
+```
 
 ### `useEdgeBoxPaddingValues(padding)`
 

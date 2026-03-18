@@ -1,26 +1,23 @@
-import { useEdgeBoxPaddingValues, useEdgeBoxPosition } from "@edgebox-lite/react";
+import { useEdgeBox } from "@edgebox-lite/react";
 
 export function SimplePositionBox() {
   const width = 220;
   const height = 120;
-  const paddingValues = useEdgeBoxPaddingValues({ top: 24, left: 24 });
 
-  const { edges, updateEdges, resetPosition } = useEdgeBoxPosition({
+  const { style, edges, updateEdges, resetPosition } = useEdgeBox({
     position: "top-left",
     width,
     height,
-    padding: paddingValues,
+    padding: { top: 24, left: 24 },
     safeZone: 16,
+    draggable: false,
+    resizable: false,
   });
 
   return (
     <div
       style={{
-        position: "fixed",
-        left: edges.left,
-        top: edges.top,
-        width,
-        height,
+        ...style,
         background: "rgba(255,255,255,0.08)",
         border: "1px solid rgba(255,255,255,0.18)",
         borderRadius: 16,
@@ -30,7 +27,7 @@ export function SimplePositionBox() {
     >
       <strong>SimplePositionBox</strong>
       <p style={{ margin: "10px 0 0", fontSize: 13, opacity: 0.9, lineHeight: 1.3 }}>
-        Minimal anchored placement using <code>useEdgeBoxPosition</code>.
+        Minimal anchored placement using the higher-level <code>useEdgeBox</code> hook.
       </p>
 
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>

@@ -19,6 +19,14 @@ export type {
 
 export type { ResizeDirection } from "./edgeBoxTypes";
 
+export { useEdgeBox } from "./hooks/useEdgeBox";
+export type {
+  UseEdgeBoxOptions,
+  UseEdgeBoxResult,
+  UseEdgeBoxDragProps,
+  UseEdgeBoxResizeHandleProps,
+} from "./hooks/useEdgeBox";
+
 export { useEdgeBoxPosition } from "./hooks/useEdgeBoxPosition";
 export type {
   EdgeBoxEdges,

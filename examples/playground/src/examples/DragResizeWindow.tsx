@@ -1,23 +1,23 @@
 import { useRef, useState } from "react";
 import {
-  useEdgeBoxDrag,
-  useEdgeBoxPaddingValues,
-  useEdgeBoxPosition,
-  useEdgeBoxResize,
-  useEdgeBoxTransform,
+  useEdgeBox,
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
 function ResizeHandle({
   dir,
-  onStart,
+  getHandleProps,
   disabled,
 }: {
   dir: ResizeDirection;
-  onStart: (dir: ResizeDirection, e: React.MouseEvent | React.TouchEvent) => void;
+  getHandleProps: (direction: ResizeDirection) => {
+    onMouseDown?: (e: React.MouseEvent) => void;
+    onTouchStart?: (e: React.TouchEvent) => void;
+  };
   disabled?: boolean;
 }) {
   const size = 12;
+  const handleProps = getHandleProps(dir);
 
   const common: React.CSSProperties = {
     position: "absolute",
@@ -42,93 +42,48 @@ function ResizeHandle({
   return (
     <div
       style={{ ...common, ...pos[dir] }}
-      onMouseDown={(e) => onStart(dir, e)}
-      onTouchStart={(e) => onStart(dir, e)}
+      {...handleProps}
     />
   );
 }
 
 export function DragResizeWindow() {
-  const windowRef = useRef<HTMLDivElement>(null);
-  const paddingValues = useEdgeBoxPaddingValues(24);
-  const safeZone = 16;
-
-  const [committedSize, setCommittedSize] = useState({ width: 420, height: 260 });
   const [autoRecalc, setAutoRecalc] = useState(true);
   const [eventSummary, setEventSummary] = useState("Try dragging or resizing the panel.");
 
-  const { edges, updateEdges, recalculate, resetPosition } = useEdgeBoxPosition({
-    position: "bottom-center",
-    width: committedSize.width,
-    height: committedSize.height,
-    padding: paddingValues,
-    safeZone,
-    disableAutoRecalc: !autoRecalc,
-  });
-
   const {
-    dragOffset,
+    ref,
+    style,
     isDragging,
     isPendingDrag,
-    handleMouseDown,
-    handleTouchStart,
+    isResizing,
+    resetPosition,
+    resetSize,
+    recalculate,
     cancelDrag,
-  } = useEdgeBoxDrag({
-    edges,
-    updateEdges,
+    getDragProps,
+    getResizeHandleProps,
+  } = useEdgeBox({
+    position: "bottom-center",
+    width: 420,
+    height: 260,
+    padding: 24,
+    safeZone: 16,
+    disableAutoRecalc: !autoRecalc,
     commitToEdges: true,
-    elementRef: windowRef,
-    safeZone,
     autoFocus: "corners",
     autoFocusSensitivity: 6,
     onDragEnd: (finalOffset) => {
       setEventSummary(`Drag committed with offset ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}.`);
     },
-  });
-
-  const { dimensions, resizeOffset, isResizing, handleResizeStart, resetSize } = useEdgeBoxResize({
-    edges,
-    updateEdges,
-    commitToEdges: true,
-    onCommitSize: setCommittedSize,
-    baseOffset: dragOffset,
-    initialWidth: committedSize.width,
-    initialHeight: committedSize.height,
     minWidth: 320,
     minHeight: 200,
-    safeZone,
-    autoFocus: "corners",
-    autoFocusSensitivity: 6,
     onResizeEnd: (finalDimensions, finalOffset) => {
       setEventSummary(
         `Resize committed to ${Math.round(finalDimensions.width)}×${Math.round(finalDimensions.height)} at ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}.`
       );
     },
   });
-
-  const { transform } = useEdgeBoxTransform({
-    dragOffset,
-    resizeOffset,
-    isResizing,
-  });
-
-  const style: React.CSSProperties = {
-    position: "fixed",
-    left: edges.left,
-    top: edges.top,
-    width: `${dimensions.width}px`,
-    height: `${dimensions.height}px`,
-    transform,
-    background: "rgba(255,255,255,0.07)",
-    border: "1px solid rgba(255,255,255,0.18)",
-    borderRadius: 18,
-    overflow: "hidden",
-    boxShadow:
-      isDragging || isResizing
-        ? "0 28px 90px rgba(0,0,0,0.55)"
-        : "0 14px 40px rgba(0,0,0,0.35)",
-    touchAction: "none",
-  };
 
   const headerStyle: React.CSSProperties = {
     padding: 12,
@@ -146,13 +101,23 @@ export function DragResizeWindow() {
 
   return (
     <div
-      ref={windowRef}
-      style={style}
+      ref={ref}
+      style={{
+        ...style,
+        background: "rgba(255,255,255,0.07)",
+        border: "1px solid rgba(255,255,255,0.18)",
+        borderRadius: 18,
+        overflow: "hidden",
+        boxShadow:
+          isDragging || isResizing
+            ? "0 28px 90px rgba(0,0,0,0.55)"
+            : "0 14px 40px rgba(0,0,0,0.35)",
+      }}
     >
-      <div style={headerStyle} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart}>
+      <div style={headerStyle} {...getDragProps()}>
         <strong>DragResizeWindow</strong>
         <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-          Drag from the header. Resize from corners/edges. Snaps to corners on release.
+          Drag from the header. Resize from corners/edges. This version uses the new <code>useEdgeBox</code> helper.
         </div>
       </div>
 
@@ -187,7 +152,7 @@ export function DragResizeWindow() {
         "se",
         "sw",
       ] as const).map((dir) => (
-        <ResizeHandle key={dir} dir={dir} onStart={handleResizeStart} />
+        <ResizeHandle key={dir} dir={dir} getHandleProps={getResizeHandleProps} />
       ))}
 
       <div
