@@ -157,6 +157,72 @@ Viewport clamp is useful when intrinsic DOM size changes after render, for examp
 - responsive content blocks
 - popovers whose content changes without a drag/resize gesture
 
+## `useEdgeBoxMeasuredSize(ref, options?)`
+
+Use `useEdgeBoxMeasuredSize()` when you need the real DOM size of an element and that size may change after render.
+
+Typical uses:
+
+- auto-sized menus
+- tooltip/popover content
+- follower overlays whose size should drive linked positioning
+- intrinsic content that loads asynchronously
+
+Because the hook uses `ResizeObserver`, it stays aligned with actual DOM size rather than guessed dimensions.
+
+## `useEdgeBoxViewportSize(options?)`
+
+Use `useEdgeBoxViewportSize()` when you want viewport dimensions as reactive state, optionally reduced by resolved padding.
+
+Typical uses:
+
+- build container rects for layout helpers
+- calculate inner working area after edge padding
+- respond to `visualViewport` changes on mobile browsers
+- feed viewport values into custom layout systems outside `useEdgeBoxPosition`
+
+The hook returns both:
+
+- raw viewport size: `viewportWidth`, `viewportHeight`
+- padded inner size: `width`, `height`
+
+## Geometry helpers
+
+The package now exposes pure rect/edge helpers for layout math outside React state.
+
+Useful helpers:
+
+- `rectToEdges(rect)`
+- `edgesToRect(edges)`
+- `edgesToOffsetRect(edges, offset?, size?)`
+- `alignRect(containerRect, size, position)`
+- `clampRectToViewport(rect, safeZone?)`
+
+These are useful when you need to:
+
+- convert between render rects and committed edges
+- align follower UI inside or around another rect
+- clamp arbitrary layout output back into the viewport
+- test geometry math without mounting React hooks
+
+## `useEdgeBoxLinkedBoxes(options)`
+
+`useEdgeBoxLinkedBoxes()` builds on the geometry helpers for linked UI such as:
+
+- overlays attached to a draggable window
+- floating badges or status chips
+- mini tool palettes that follow a source panel
+- linked windows that should stay aligned with a source rect
+
+Typical flow:
+
+1) compute the source rect from `edges` and current offset with `getRectFromEdges(...)`
+2) measure the follower box with `useEdgeBoxMeasuredSize(...)`
+3) generate a linked rect with `getLinkedRect(...)`
+4) optionally clamp it to the viewport
+
+This keeps the follower box derived from the source box instead of manually recalculating positions in component code.
+
 ## `useEdgeBoxCssPosition(options)`
 
 Low-level helper that returns CSS edge style (`left`/`right`/`top`/`bottom`) for an anchored position. Most components in this repo use `useEdgeBoxPosition` directly instead.

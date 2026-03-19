@@ -5,6 +5,8 @@ import { DragResizeWindow } from "./examples/DragResizeWindow";
 import { AutoSizedQuickMenu } from "./examples/AutoSizedQuickMenu";
 import { AutoFocusSnapBox } from "./examples/AutoFocusSnapBox";
 import { AnchoredCssPositionShowcase } from "./examples/AnchoredCssPositionShowcase";
+import { LayoutHelpersShowcase } from "./examples/LayoutHelpersShowcase";
+import { LinkedBoxesShowcase } from "./examples/LinkedBoxesShowcase";
 import { SimplePositionBox } from "./examples/SimplePositionBox";
 import { SimpleDraggableBox } from "./examples/SimpleDraggableBox";
 import { SimpleResizableBox } from "./examples/SimpleResizableBox";
@@ -18,7 +20,9 @@ type ExampleId =
   | "drag-resize"
   | "auto-size-clamp"
   | "autofocus"
-  | "css-position";
+  | "css-position"
+  | "layout-helpers"
+  | "linked-boxes";
 
 const exampleMeta: Record<ExampleId, { label: string; features: string[] }> = {
   "simple-position": {
@@ -57,6 +61,14 @@ const exampleMeta: Record<ExampleId, { label: string; features: string[] }> = {
     label: "CSS edge positioning",
     features: ["useEdgeBoxCssPosition", "fixed edge styles", "center anchor transform"],
   },
+  "layout-helpers": {
+    label: "Layout + rect helpers",
+    features: ["alignRect", "rectToEdges", "edgesToRect", "clampRectToViewport", "resolveEdgeBoxPaddingValues"],
+  },
+  "linked-boxes": {
+    label: "Linked boxes + measurement",
+    features: ["useEdgeBoxLinkedBoxes", "useEdgeBoxMeasuredSize", "useEdgeBoxViewportSize", "linked overlay"],
+  },
 };
 
 export function App() {
@@ -83,6 +95,10 @@ export function App() {
         return <AutoFocusSnapBox />;
       case "css-position":
         return <AnchoredCssPositionShowcase />;
+      case "layout-helpers":
+        return <LayoutHelpersShowcase />;
+      case "linked-boxes":
+        return <LinkedBoxesShowcase />;
     }
   })();
 
@@ -109,13 +125,15 @@ export function App() {
               <optgroup label="Advanced examples">
                 <option value="auto-size-clamp">{exampleMeta["auto-size-clamp"].label}</option>
                 <option value="css-position">{exampleMeta["css-position"].label}</option>
+                <option value="layout-helpers">{exampleMeta["layout-helpers"].label}</option>
+                <option value="linked-boxes">{exampleMeta["linked-boxes"].label}</option>
               </optgroup>
             </select>
           </label>
         </div>
         <p className="exampleHostHint">
           Start with the simple examples for minimal hook usage, then switch to the feature demos
-          for reset flows, snapping, viewport clamp, and low-level CSS positioning.
+          for reset flows, snapping, viewport clamp, geometry helpers, linked boxes, and low-level CSS positioning.
         </p>
         <div className="featureList">
           {selectedMeta.features.map((feature) => (

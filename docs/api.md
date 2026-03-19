@@ -8,6 +8,7 @@ Advanced usage guide: [`docs/advanced.md`](./advanced.md)
 
 ```ts
 import {
+  resolveEdgeBoxPaddingValues,
   useEdgeBox,
   useEdgeBoxPaddingValues,
   useEdgeBoxCssPosition,
@@ -15,22 +16,36 @@ import {
   useEdgeBoxDrag,
   useEdgeBoxResize,
   useEdgeBoxTransform,
+  useEdgeBoxMeasuredSize,
+  useEdgeBoxViewportSize,
+  useEdgeBoxLinkedBoxes,
   useEdgeBoxViewportClamp,
+  alignRect,
+  clampRectToViewport,
+  edgesToOffsetRect,
+  edgesToRect,
+  rectToEdges,
 } from "@edgebox-lite/react";
 ```
 
-All exported hooks in the package entrypoint:
+All exported hooks and helpers in the package entrypoint:
 
-| Hook | Status | Primary purpose |
+| Export | Kind | Primary purpose |
 |---|---|---|
-| `useEdgeBox` | Exported | High-level hook that composes position, drag, resize, and transform into one simpler API |
-| `useEdgeBoxPaddingValues` | Exported | Normalize padding shorthand into resolved edge values |
-| `useEdgeBoxCssPosition` | Exported | Compute low-level CSS `left`/`right`/`top`/`bottom` anchor values |
-| `useEdgeBoxPosition` | Exported | Track committed viewport `edges` and recalculate/clamp them |
-| `useEdgeBoxDrag` | Exported | Add drag interactions with safe-zone clamping |
-| `useEdgeBoxResize` | Exported | Add 8-direction resize interactions with constraints |
-| `useEdgeBoxTransform` | Exported | Combine drag/resize offsets into one `translate3d(...)` |
-| `useEdgeBoxViewportClamp` | Exported | Measure DOM size changes and keep the box inside the viewport |
+| `useEdgeBox` | Hook | High-level hook that composes position, drag, resize, and transform into one simpler API |
+| `resolveEdgeBoxPaddingValues` | Utility | Resolve padding shorthand into explicit `top/right/bottom/left` values without React |
+| `useEdgeBoxPaddingValues` | Hook | Resolve padding shorthand with memoized hook semantics |
+| `useEdgeBoxCssPosition` | Hook | Compute low-level CSS `left`/`right`/`top`/`bottom` anchor values |
+| `useEdgeBoxPosition` | Hook | Track committed viewport `edges` and recalculate/clamp them |
+| `useEdgeBoxDrag` | Hook | Add drag interactions with safe-zone clamping |
+| `useEdgeBoxResize` | Hook | Add 8-direction resize interactions with constraints |
+| `useEdgeBoxTransform` | Hook | Combine drag/resize offsets into one `translate3d(...)` |
+| `useEdgeBoxMeasuredSize` | Hook | Measure DOM size changes with `ResizeObserver` |
+| `useEdgeBoxViewportSize` | Hook | Track viewport size and inner size after padding |
+| `useEdgeBoxLinkedBoxes` | Hook | Compute linked/follower rectangles and edges from a source box |
+| `useEdgeBoxViewportClamp` | Hook | Measure DOM size changes and keep the box inside the viewport |
+| `rectToEdges`, `edgesToRect`, `edgesToOffsetRect` | Utilities | Convert between rect-based and edge-based geometry |
+| `alignRect`, `clampRectToViewport` | Utilities | Align or clamp rects for low-level layout workflows |
 
 ## API cheat sheet
 
@@ -43,7 +58,12 @@ All exported hooks in the package entrypoint:
 | `useEdgeBoxDrag` | Dragging + boundary clamping | `edges`, `updateEdges`, `elementRef`, `safeZone` | `dragOffset`, `handleMouseDown`, `handleTouchStart`, `resetDragOffset`, `cancelDrag`, flags |
 | `useEdgeBoxResize` | Resizing + constraints + safe-zone clamping | `edges`, `updateEdges`, `baseOffset`, constraints | `dimensions`, `resizeOffset`, `handleResizeStart`, `resetSize(options?)`, flags |
 | `useEdgeBoxTransform` | Compose drag/resize motion into one render transform | offsets, optional `baseTransform` | `offset`, `transform` |
+| `useEdgeBoxMeasuredSize` | Measure intrinsic DOM size | `ref`, optional `disabled` | `Dimensions \| null` |
+| `useEdgeBoxViewportSize` | Track viewport size and inner content area | optional `padding`, viewport options | viewport dimensions + resolved padding |
+| `useEdgeBoxLinkedBoxes` | Derive linked/follower geometry | `position`, optional `safeZone` | helpers for linked rects and edges |
 | `useEdgeBoxViewportClamp` | Keep auto-sized DOM inside viewport | `elementRef`, `updateEdges`, `deps` | `clampNow()` |
+| `rectToEdges`, `edgesToRect`, `edgesToOffsetRect` | Convert geometry models | a rect or edges plus optional offset | rect/edge results |
+| `alignRect`, `clampRectToViewport` | Align or clamp rects | rect, size, position, safe zone | `EdgeBoxLayoutRect` |
 
 ## Types
 
@@ -56,6 +76,7 @@ Main types used across the package:
 - `EdgeBoxAutoFocus`
 - `PaddingValue`
 - `PaddingValues`
+- `EdgeBoxLayoutRect`
 - `CssEdgePosition`
 - `EdgePosition`
 - `UseEdgeBoxCssPositionResult`
@@ -71,6 +92,7 @@ Use this when you want the simplest API for a draggable and/or resizable floatin
 Options:
 
 - `position?: EdgePosition` – anchored start position (default: `bottom-right`)
+- `elementRef?: React.RefObject<HTMLElement>` – use an external ref instead of the internal one
 - `width?: number`, `height?: number` – initial box size
 - `initialWidth?: number`, `initialHeight?: number` – aliases for initial size when you prefer resize-style naming
 - `padding?: PaddingValue` – anchored inset (default: `24`)
@@ -98,6 +120,73 @@ Returns:
 - `handleMouseDown(e)`, `handleTouchStart(e)`, `handleResizeStart(direction, e)`
 - `getDragProps()` – returns drag bindings for a drag handle or container
 - `getResizeHandleProps(direction)` – returns bindings for a resize handle
+
+Behavior notes:
+
+- when `elementRef` is provided, `useEdgeBox()` reuses that ref instead of creating its own container ref
+- for non-resizable boxes with omitted `width`/`height`, `useEdgeBox()` can preserve anchored positioning using measured intrinsic size
+
+### `resolveEdgeBoxPaddingValues(padding)`
+
+Pure function version of `useEdgeBoxPaddingValues`.
+
+Use this when you need resolved padding values in utilities, tests, module-level code, or non-React layout helpers.
+
+Returns:
+
+- `PaddingValues`
+
+### `useEdgeBoxMeasuredSize(ref, options?)`
+
+Measures an element's current DOM size with `ResizeObserver`.
+
+Options:
+
+- `disabled?: boolean` (default: `false`)
+
+Returns:
+
+- `Dimensions | null`
+
+Use this for intrinsic content that changes size outside drag/resize gestures.
+
+### `useEdgeBoxViewportSize(options?)`
+
+Tracks viewport width/height and returns both raw viewport dimensions and inner dimensions after padding is applied.
+
+Options:
+
+- `padding?: PaddingValue`
+- `disabled?: boolean` (default: `false`)
+- `listenToVisualViewport?: boolean` (default: `true`)
+- `fallbackWidth?: number`
+- `fallbackHeight?: number`
+
+Returns:
+
+- `viewportWidth`
+- `viewportHeight`
+- `width`
+- `height`
+- `paddingValues`
+
+### `useEdgeBoxLinkedBoxes(options)`
+
+Build linked or follower geometry from a source EdgeBox rectangle.
+
+Options:
+
+- `position: EdgePosition`
+- `safeZone?: number` (default: `0`)
+
+Returns:
+
+- `getRectFromEdges(edges, offset?, size?)`
+- `getLinkedRect(sourceRect, size, clamp?)`
+- `getLinkedEdges(sourceRect, size, clamp?)`
+- `clampRect(rect)`
+
+Useful for popovers, badges, helper overlays, and linked tool windows.
 
 ### `useEdgeBoxPaddingValues(padding)`
 
@@ -285,6 +374,28 @@ Options:
 Returns:
 
 - `clampNow()`
+
+## Geometry utilities
+
+### `rectToEdges(rect)`
+
+Convert a `{ left, top, width, height }` layout rect into `EdgeBoxEdges`.
+
+### `edgesToRect(edges)`
+
+Convert `left/top/right/bottom` edges into `{ left, top, width, height }`.
+
+### `edgesToOffsetRect(edges, offset?, size?)`
+
+Convert edges into a rect and apply an additional render offset, optionally overriding `width`/`height`.
+
+### `alignRect(containerRect, size, position)`
+
+Place a rect of the given size inside another rect using EdgeBox anchor positions like `top-left`, `top-center`, or `bottom-right`.
+
+### `clampRectToViewport(rect, safeZone?)`
+
+Clamp a rect's top-left position so the rect stays inside the current viewport with the given safe zone.
 
 ### `useEdgeBoxCssPosition(options)`
 

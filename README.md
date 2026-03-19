@@ -20,6 +20,9 @@ This repo contains the `@edgebox-lite/react` package.
 - **Commit or not**: you can keep temporary offsets in state, or “commit” the final result back into `edges`.
 - **Auto focus snapping** (optional): snap to edges / center / corners when a gesture ends.
 - **Viewport clamp for auto-sized elements**: measure DOM size changes (via `ResizeObserver`) and clamp into the viewport.
+- **Geometry helpers**: convert between rects and edges, align boxes, and clamp layout rects to the viewport.
+- **Measurement helpers**: read DOM size or viewport size with small SSR-aware hooks.
+- **Linked box helpers**: compute follower/overlay placement relative to another EdgeBox rectangle.
 - **SSR-aware**: hooks guard access to `window`.
 
 ## Compatibility
@@ -75,10 +78,31 @@ npm run dev
 ```ts
 import {
   useEdgeBox,
+  useEdgeBoxMeasuredSize,
+  useEdgeBoxViewportSize,
+  useEdgeBoxLinkedBoxes,
+  resolveEdgeBoxPaddingValues,
+  rectToEdges,
+  edgesToRect,
+  alignRect,
+  clampRectToViewport,
 } from "@edgebox-lite/react";
 ```
 
 For the full exported hook list and hook-by-hook options/returns, see `docs/api.md`.
+
+## Additional low-level helpers
+
+Beyond `useEdgeBox()`, the package also exports smaller building blocks for advanced layout work:
+
+- `useEdgeBoxMeasuredSize(ref)` – observe DOM size with `ResizeObserver`
+- `useEdgeBoxViewportSize(options)` – track viewport width/height and inner size after padding
+- `useEdgeBoxLinkedBoxes(options)` – compute follower/overlay rectangles from a source box
+- `resolveEdgeBoxPaddingValues(padding)` – pure padding resolver without React state
+- `rectToEdges`, `edgesToRect`, `edgesToOffsetRect` – convert between layout models
+- `alignRect`, `clampRectToViewport` – position and clamp layout rects
+
+See `docs/api.md` for signatures and `docs/advanced.md` for advanced usage patterns.
 
 ## Simple: `useEdgeBox()` general example
 
@@ -162,7 +186,7 @@ const {
 
 ### Simple draggable + resizable panel with `useEdgeBox()`
 
-This is the same practical use case as the advanced primitive-hook walkthrough below, but using the higher-level API.
+This is the same practical use case covered in `docs/advanced.md`, but using the higher-level API.
 
 ```tsx
 import { useEdgeBox } from "@edgebox-lite/react";
@@ -270,6 +294,7 @@ Types:
 - `EdgeBoxAutoFocus`
 - `PaddingValue`, `PaddingValues`
 - `CssEdgePosition`, `EdgePosition`, `UseEdgeBoxCssPositionResult`
+- `EdgeBoxLayoutRect`
 
 ## API cheat sheet (what each hook does)
 
@@ -282,6 +307,11 @@ flowchart LR
 For lower-level manual composition, see `docs/advanced.md`.
 
 For the full hook-by-hook reference, see `docs/api.md`.
+
+The playground also includes advanced demos for:
+
+- layout + rect helpers
+- linked boxes + measurement helpers
 
 ## Package structure (this repo)
 
@@ -458,7 +488,7 @@ const {
 });
 ```
 
-If you need custom low-level composition, use the advanced primitive-hook walkthrough above.
+If you need custom low-level composition, use `docs/advanced.md`.
 
 ## Advanced recipe: primitive hook composition
 
