@@ -5,7 +5,7 @@ import { useEdgeBoxDrag } from "./useEdgeBoxDrag";
 import { useEdgeBoxResize, type ResetSizeOptions } from "./useEdgeBoxResize";
 import { useEdgeBoxTransform } from "./useEdgeBoxTransform";
 import type { EdgePosition } from "./useEdgeBoxCssPosition";
-import type { PaddingValue } from "./useEdgeBoxPaddingValues";
+import { useEdgeBoxPaddingValues, type PaddingValue } from "./useEdgeBoxPaddingValues";
 import type { EdgeBoxAutoFocus } from "../internal/edgeBoxAutoFocus";
 import {
   DEFAULT_AUTO_FOCUS,
@@ -63,8 +63,8 @@ export interface UseEdgeBoxResizeHandleProps {
   onTouchStart?: (e: React.TouchEvent) => void;
 }
 
-export interface UseEdgeBoxResult<T extends HTMLElement = HTMLDivElement> {
-  ref: React.RefObject<T>;
+export interface UseEdgeBoxResult {
+  ref: React.RefObject<HTMLDivElement>;
   style: React.CSSProperties;
   edges: EdgeBoxEdges;
   dimensions: Dimensions;
@@ -89,7 +89,7 @@ export interface UseEdgeBoxResult<T extends HTMLElement = HTMLDivElement> {
   getResizeHandleProps: (direction: ResizeDirection) => UseEdgeBoxResizeHandleProps;
 }
 
-export function useEdgeBox<T extends HTMLElement = HTMLDivElement>({
+export function useEdgeBox({
   position = DEFAULT_EDGE_POSITION,
   width,
   height,
@@ -114,8 +114,9 @@ export function useEdgeBox<T extends HTMLElement = HTMLDivElement>({
   onCommitSize,
   onDragEnd,
   onResizeEnd,
-}: UseEdgeBoxOptions = {}): UseEdgeBoxResult<T> {
-  const ref = useRef<T>(null);
+}: UseEdgeBoxOptions = {}): UseEdgeBoxResult {
+  const ref = useRef<HTMLDivElement>(null);
+  const paddingValues = useEdgeBoxPaddingValues(padding);
 
   const resolvedInitialWidth = width ?? initialWidth ?? DEFAULT_RESIZE_INITIAL_WIDTH;
   const resolvedInitialHeight = height ?? initialHeight ?? DEFAULT_RESIZE_INITIAL_HEIGHT;
@@ -138,10 +139,68 @@ export function useEdgeBox<T extends HTMLElement = HTMLDivElement>({
     });
   }, [resolvedInitialHeight, resolvedInitialWidth]);
 
+  const [measuredSize, setMeasuredSize] = useState<Partial<Dimensions>>({});
+  const tracksIntrinsicSize = !resizable && (width === undefined || height === undefined);
+
+  useEffect(() => {
+    if (!tracksIntrinsicSize) return;
+    if (typeof window === "undefined") return;
+
+    const element = ref.current;
+    if (!element) return;
+
+    const updateMeasuredSize = () => {
+      const rect = element.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      setMeasuredSize(prev => {
+        const nextWidth = width === undefined ? rect.width : prev.width;
+        const nextHeight = height === undefined ? rect.height : prev.height;
+
+        if (
+          prev.width !== undefined
+          && nextWidth !== undefined
+          && Math.abs(prev.width - nextWidth) < 0.5
+          && prev.height !== undefined
+          && nextHeight !== undefined
+          && Math.abs(prev.height - nextHeight) < 0.5
+        ) {
+          return prev;
+        }
+
+        if (
+          prev.width === nextWidth
+          && prev.height === nextHeight
+        ) {
+          return prev;
+        }
+
+        return {
+          width: nextWidth,
+          height: nextHeight,
+        };
+      });
+    };
+
+    updateMeasuredSize();
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(updateMeasuredSize);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [height, tracksIntrinsicSize, width]);
+
+  const positionWidth = resizable ? committedSize.width : width ?? measuredSize.width;
+  const positionHeight = resizable ? committedSize.height : height ?? measuredSize.height;
+
   const { edges, updateEdges, recalculate, resetPosition } = useEdgeBoxPosition({
     position,
-    width: committedSize.width,
-    height: committedSize.height,
+    width: positionWidth,
+    height: positionHeight,
     padding,
     safeZone,
     disableAutoRecalc,
@@ -199,22 +258,120 @@ export function useEdgeBox<T extends HTMLElement = HTMLDivElement>({
     onResizeEnd,
   });
 
+  const isCenterPosition = position === "top-center" || position === "bottom-center";
+  const isLeftPosition = position === "top-left" || position === "bottom-left";
+  const isTopPosition = position === "top-left" || position === "top-right" || position === "top-center";
+
+  const resolvedAnchorStyle = useMemo(() => {
+    const style: React.CSSProperties = {};
+    const baseTransforms: string[] = [];
+    const autoWidth = !resizable && width === undefined;
+    const autoHeight = !resizable && height === undefined;
+
+    if (typeof window === "undefined") {
+      const leftPad = Math.max(paddingValues.left, safeZone);
+      const rightPad = Math.max(paddingValues.right, safeZone);
+      const topPad = Math.max(paddingValues.top, safeZone);
+      const bottomPad = Math.max(paddingValues.bottom, safeZone);
+
+      if (autoWidth) {
+        if (isCenterPosition) {
+          style.left = "50%";
+          baseTransforms.push("translateX(-50%)");
+        } else if (isLeftPosition) {
+          style.left = leftPad;
+        } else {
+          style.right = rightPad;
+        }
+      } else {
+        style.left = edges.left;
+      }
+
+      if (autoHeight) {
+        if (isTopPosition) {
+          style.top = topPad;
+        } else {
+          style.bottom = bottomPad;
+        }
+      } else {
+        style.top = edges.top;
+      }
+
+      return {
+        style,
+        baseTransform: baseTransforms.join(" "),
+      };
+    }
+
+    if (autoWidth) {
+      if (isCenterPosition) {
+        style.left = (edges.left + edges.right) / 2;
+        baseTransforms.push("translateX(-50%)");
+      } else if (isLeftPosition) {
+        style.left = edges.left;
+      } else {
+        style.right = window.innerWidth - edges.right;
+      }
+    } else {
+      style.left = edges.left;
+    }
+
+    if (autoHeight) {
+      if (isTopPosition) {
+        style.top = edges.top;
+      } else {
+        style.bottom = window.innerHeight - edges.bottom;
+      }
+    } else {
+      style.top = edges.top;
+    }
+
+    return {
+      style,
+      baseTransform: baseTransforms.join(" "),
+    };
+  }, [
+    edges.bottom,
+    edges.left,
+    edges.right,
+    edges.top,
+    height,
+    isCenterPosition,
+    isLeftPosition,
+    isTopPosition,
+    paddingValues.bottom,
+    paddingValues.left,
+    paddingValues.right,
+    paddingValues.top,
+    resizable,
+    safeZone,
+    width,
+  ]);
+
+  const composedBaseTransform = useMemo(() => {
+    return [resolvedAnchorStyle.baseTransform, baseTransform].filter(Boolean).join(" ");
+  }, [baseTransform, resolvedAnchorStyle.baseTransform]);
+
   const { offset, transform } = useEdgeBoxTransform({
     dragOffset,
     resizeOffset,
     isResizing,
-    baseTransform,
+    baseTransform: composedBaseTransform || undefined,
   });
+
+  const resolvedDimensions = useMemo<Dimensions>(() => ({
+    width: width ?? measuredSize.width ?? dimensions.width,
+    height: height ?? measuredSize.height ?? dimensions.height,
+  }), [dimensions.height, dimensions.width, height, measuredSize.height, measuredSize.width, width]);
 
   const style = useMemo((): React.CSSProperties => ({
     position: "fixed",
-    left: edges.left,
-    top: edges.top,
-    width: dimensions.width,
-    height: dimensions.height,
+    ...resolvedAnchorStyle.style,
+    width: !resizable && width === undefined ? undefined : dimensions.width,
+    height: !resizable && height === undefined ? undefined : dimensions.height,
     transform,
     touchAction: draggable || resizable ? "none" : undefined,
-  }), [dimensions.height, dimensions.width, draggable, edges.left, edges.top, resizable, transform]);
+  }), [dimensions.height, dimensions.width, draggable, height, resizable, resolvedAnchorStyle.style, transform, width]);
 
   const getDragProps = useCallback((): UseEdgeBoxDragProps => {
     if (!draggable) {
@@ -242,7 +399,7 @@ export function useEdgeBox<T extends HTMLElement = HTMLDivElement>({
     ref,
     style,
     edges,
-    dimensions,
+    dimensions: resolvedDimensions,
     offset,
     transform,
     dragOffset,

@@ -92,6 +92,7 @@ function clampManualEdgesToViewport(
   width: number | undefined,
   height: number | undefined,
   safeZone: number,
+  position: EdgePosition,
 ): EdgeBoxEdges | null {
   if (typeof window === "undefined") {
     return null;
@@ -106,9 +107,19 @@ function clampManualEdgesToViewport(
     return null;
   }
 
+  const centerX = (edges.left + edges.right) / 2;
+  const nextLeft = position === "top-center" || position === "bottom-center"
+    ? centerX - nextWidth / 2
+    : position === "top-right" || position === "bottom-right"
+      ? edges.right - nextWidth
+      : edges.left;
+  const nextTop = position === "bottom-left" || position === "bottom-center" || position === "bottom-right"
+    ? edges.bottom - nextHeight
+    : edges.top;
+
   const { x: left, y: top } = clampTopLeftToViewport(
-    edges.left,
-    edges.top,
+    nextLeft,
+    nextTop,
     { width: nextWidth, height: nextHeight },
     safeZone,
     window.innerWidth,
@@ -144,7 +155,7 @@ export function useEdgeBoxPosition(options: UseEdgeBoxPositionOptions = {}): Use
   const recalculate = useCallback(() => {
     if (isManualPositionRef.current && typeof window !== 'undefined') {
       setEdges(prev => {
-        const clamped = clampManualEdgesToViewport(prev, width, height, safeZone);
+        const clamped = clampManualEdgesToViewport(prev, width, height, safeZone, position);
         if (clamped) {
           if (areEdgeBoxRectsEqual(prev, clamped)) {
             return prev;
