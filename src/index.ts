@@ -7,7 +7,7 @@
  * type/name collisions (e.g. multiple `Position`/`Dimensions` types).
  */
 
-export { useEdgeBoxPaddingValues } from "./hooks/useEdgeBoxPaddingValues";
+export { resolveEdgeBoxPaddingValues, useEdgeBoxPaddingValues } from "./hooks/useEdgeBoxPaddingValues";
 export type { PaddingValue, PaddingValues } from "./hooks/useEdgeBoxPaddingValues";
 
 export { useEdgeBoxCssPosition } from "./hooks/useEdgeBoxCssPosition";

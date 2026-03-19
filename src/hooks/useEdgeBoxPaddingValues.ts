@@ -19,34 +19,37 @@ export interface PaddingValues {
   right: number;
 }
 
+export function resolveEdgeBoxPaddingValues(
+  padding: PaddingValue = 24,
+): PaddingValues {
+  if (typeof padding === 'number') {
+    return {
+      top: padding,
+      bottom: padding,
+      left: padding,
+      right: padding,
+    };
+  }
+
+  const defaultPadding = 24;
+  const all = padding.all ?? defaultPadding;
+  const horizontal = padding.horizontal ?? all;
+  const vertical = padding.vertical ?? all;
+
+  return {
+    top: padding.top ?? vertical,
+    bottom: padding.bottom ?? vertical,
+    left: padding.left ?? horizontal,
+    right: padding.right ?? horizontal,
+  };
+}
+
 /**
  * Custom hook that resolves padding prop into individual edge values.
  */
 export function useEdgeBoxPaddingValues(
   padding: PaddingValue = 24
 ): PaddingValues {
-  return useMemo(() => {
-    if (typeof padding === 'number') {
-      return {
-        top: padding,
-        bottom: padding,
-        left: padding,
-        right: padding,
-      };
-    }
-
-    // Object padding - resolve each side with precedence
-    const defaultPadding = 24;
-    const all = padding.all ?? defaultPadding;
-    const horizontal = padding.horizontal ?? all;
-    const vertical = padding.vertical ?? all;
-
-    return {
-      top: padding.top ?? vertical,
-      bottom: padding.bottom ?? vertical,
-      left: padding.left ?? horizontal,
-      right: padding.right ?? horizontal,
-    };
-  }, [padding]);
+  return useMemo(() => resolveEdgeBoxPaddingValues(padding), [padding]);
 }
 
