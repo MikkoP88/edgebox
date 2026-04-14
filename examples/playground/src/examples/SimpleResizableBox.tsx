@@ -4,16 +4,19 @@ import { useEdgeBox, useEdgeBoxViewportSize } from "@edgebox-lite/react";
 const maxBoxWidth = 230;
 const maxBoxHeight = 135;
 const viewportInset = 20;
+const edgeInset = 16;
+const edgeThickness = 18;
+const cornerSize = 24;
 
 const resizeHandles = [
-  { direction: "n", style: { top: -6, left: 12, right: 12, height: 12, cursor: "ns-resize" } },
-  { direction: "s", style: { bottom: -6, left: 12, right: 12, height: 12, cursor: "ns-resize" } },
-  { direction: "e", style: { top: 12, right: -6, bottom: 12, width: 12, cursor: "ew-resize" } },
-  { direction: "w", style: { top: 12, left: -6, bottom: 12, width: 12, cursor: "ew-resize" } },
-  { direction: "ne", style: { top: -6, right: -6, width: 16, height: 16, cursor: "nesw-resize" } },
-  { direction: "nw", style: { top: -6, left: -6, width: 16, height: 16, cursor: "nwse-resize" } },
-  { direction: "se", style: { right: -6, bottom: -6, width: 16, height: 16, cursor: "nwse-resize" } },
-  { direction: "sw", style: { left: -6, bottom: -6, width: 16, height: 16, cursor: "nesw-resize" } },
+  { direction: "n", style: { top: -edgeThickness / 2, left: edgeInset, right: edgeInset, height: edgeThickness, cursor: "ns-resize" } },
+  { direction: "s", style: { bottom: -edgeThickness / 2, left: edgeInset, right: edgeInset, height: edgeThickness, cursor: "ns-resize" } },
+  { direction: "e", style: { top: edgeInset, right: -edgeThickness / 2, bottom: edgeInset, width: edgeThickness, cursor: "ew-resize" } },
+  { direction: "w", style: { top: edgeInset, left: -edgeThickness / 2, bottom: edgeInset, width: edgeThickness, cursor: "ew-resize" } },
+  { direction: "ne", style: { top: -cornerSize / 2, right: -cornerSize / 2, width: cornerSize, height: cornerSize, cursor: "nesw-resize" } },
+  { direction: "nw", style: { top: -cornerSize / 2, left: -cornerSize / 2, width: cornerSize, height: cornerSize, cursor: "nwse-resize" } },
+  { direction: "se", style: { right: -cornerSize / 2, bottom: -cornerSize / 2, width: cornerSize, height: cornerSize, cursor: "nwse-resize" } },
+  { direction: "sw", style: { left: -cornerSize / 2, bottom: -cornerSize / 2, width: cornerSize, height: cornerSize, cursor: "nesw-resize" } },
 ] as const;
 
 export function SimpleResizableBox() {
@@ -76,6 +79,10 @@ export function SimpleResizableBox() {
           key={handle.direction}
           style={{
             position: "absolute",
+            background: "#ffffff",
+            border: "1px solid #0b1020",
+            borderRadius: handle.direction.length === 1 ? 10 : 999,
+            boxShadow: "0 6px 16px #000000",
             ...handle.style,
           }}
           {...getResizeHandleProps(handle.direction)}

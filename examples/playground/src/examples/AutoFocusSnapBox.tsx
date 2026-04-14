@@ -9,8 +9,8 @@ import {
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
-const maxBoxWidth = 360;
-const maxBoxHeight = 220;
+const maxBoxWidth = 200;
+const maxBoxHeight = 100;
 const viewportInset = 24;
 const sensitivityOptions = [4, 8, 12, 16, 24] as const;
 const autoFocusOptions: EdgeBoxAutoFocus[] = ["unset", "corners", "horizontal", "vertical", "all", "full", "1,2,10"];
