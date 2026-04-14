@@ -61,7 +61,9 @@ export function AutoSizedQuickMenu() {
     border: "1px solid rgba(255,255,255,0.16)",
     borderRadius: 16,
     padding: 12,
-    width: open ? 320 : "auto",
+    width: open ? numericWidth : "auto",
+    maxWidth: "calc(100vw - 32px)",
+    boxSizing: "border-box",
     userSelect: "none",
     touchAction: "none",
     boxShadow: "0 16px 50px rgba(0,0,0,0.45)",
@@ -74,8 +76,8 @@ export function AutoSizedQuickMenu() {
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <strong style={{ flex: 1 }}>AutoSizedQuickMenu</strong>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <strong style={{ flex: "1 1 120px" }}>AutoSizedQuickMenu</strong>
         <button onClick={() => setOpen((v) => !v)}>{open ? "Close" : "Open"}</button>
         <button onClick={() => setShowDetails((value) => !value)} disabled={!open}>
           {showDetails ? "Compact" : "Details"}

@@ -1,8 +1,11 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   useEdgeBox,
   type ResizeDirection,
 } from "@edgebox-lite/react";
+
+const windowWidth = 420;
+const windowHeight = 260;
 
 function ResizeHandle({
   dir,
@@ -42,7 +45,14 @@ function ResizeHandle({
   return (
     <div
       style={{ ...common, ...pos[dir] }}
-      {...handleProps}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        handleProps.onMouseDown?.(e);
+      }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+        handleProps.onTouchStart?.(e);
+      }}
     />
   );
 }
@@ -57,16 +67,16 @@ export function DragResizeWindow() {
     isDragging,
     isPendingDrag,
     isResizing,
-    resetPosition,
     resetSize,
     recalculate,
     cancelDrag,
+    updateEdges,
     getDragProps,
     getResizeHandleProps,
   } = useEdgeBox({
     position: "bottom-center",
-    width: 420,
-    height: 260,
+    width: windowWidth,
+    height: windowHeight,
     padding: 24,
     safeZone: 16,
     disableAutoRecalc: !autoRecalc,
@@ -85,18 +95,42 @@ export function DragResizeWindow() {
     },
   });
 
+  const centerWindow = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const left = (window.innerWidth - windowWidth) / 2;
+    const top = (window.innerHeight - windowHeight) / 2;
+
+    updateEdges({
+      left,
+      top,
+      right: left + windowWidth,
+      bottom: top + windowHeight,
+    });
+  }, [updateEdges]);
+
+  useEffect(() => {
+    centerWindow();
+  }, [centerWindow]);
+
+  const dragSafeButtonProps = {
+    onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation(),
+    onTouchStart: (e: React.TouchEvent<HTMLButtonElement>) => e.stopPropagation(),
+  };
+
   const headerStyle: React.CSSProperties = {
     padding: 12,
     borderBottom: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(0,0,0,0.2)",
-    cursor: isDragging ? "grabbing" : "grab",
   };
 
   const handleResetAll = () => {
     cancelDrag();
-    resetPosition();
+    centerWindow();
     resetSize({ commit: true });
-    setEventSummary("Position and size reset to their anchored defaults.");
+    setEventSummary("Position reset to center and size reset to its default.");
   };
 
   return (
@@ -108,16 +142,18 @@ export function DragResizeWindow() {
         border: "1px solid rgba(255,255,255,0.18)",
         borderRadius: 18,
         overflow: "hidden",
+        cursor: isDragging ? "grabbing" : "grab",
         boxShadow:
           isDragging || isResizing
             ? "0 28px 90px rgba(0,0,0,0.55)"
             : "0 14px 40px rgba(0,0,0,0.35)",
       }}
+      {...getDragProps()}
     >
-      <div style={headerStyle} {...getDragProps()}>
+      <div style={headerStyle}>
         <strong>DragResizeWindow</strong>
         <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-          Drag from the header. Resize from corners/edges. This version uses the new <code>useEdgeBox</code> helper.
+          Drag from anywhere except the buttons. Resize from corners or edges. This version uses the new <code>useEdgeBox</code> helper.
         </div>
       </div>
 
@@ -128,11 +164,11 @@ export function DragResizeWindow() {
         </p>
 
         <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-          <button onClick={() => resetPosition()}>Reset position</button>
-          <button onClick={() => resetSize({ commit: true })}>Reset size</button>
-          <button onClick={() => recalculate()}>Manual recalc</button>
-          <button onClick={handleResetAll}>Reset all</button>
-          <button onClick={() => setAutoRecalc((value) => !value)}>
+          <button {...dragSafeButtonProps} onClick={centerWindow}>Reset position</button>
+          <button {...dragSafeButtonProps} onClick={() => resetSize({ commit: true })}>Reset size</button>
+          <button {...dragSafeButtonProps} onClick={() => recalculate()}>Manual recalc</button>
+          <button {...dragSafeButtonProps} onClick={handleResetAll}>Reset all</button>
+          <button {...dragSafeButtonProps} onClick={() => setAutoRecalc((value) => !value)}>
             Auto recalc: {autoRecalc ? "on" : "off"}
           </button>
         </div>

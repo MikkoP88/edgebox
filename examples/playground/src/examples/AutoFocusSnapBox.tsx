@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   useEdgeBox,
   type EdgeBoxAutoFocus,
   type ResizeDirection,
 } from "@edgebox-lite/react";
+
+const boxWidth = 360;
+const boxHeight = 220;
+const sensitivityOptions = [4, 8, 12, 16, 24] as const;
 
 function Handle({
   dir,
@@ -46,23 +50,25 @@ function Handle({
 
 export function AutoFocusSnapBox() {
   const [autoFocus, setAutoFocus] = useState<EdgeBoxAutoFocus>("corners");
+  const [autoFocusSensitivity, setAutoFocusSensitivity] = useState<number>(8);
   const [lastSnap, setLastSnap] = useState("No snap commit yet");
 
   const {
     ref,
     style,
     isDragging,
+    updateEdges,
     getDragProps,
     getResizeHandleProps,
   } = useEdgeBox({
     position: "top-center",
-    width: 360,
-    height: 220,
+    width: boxWidth,
+    height: boxHeight,
     padding: 24,
     safeZone: 16,
     commitToEdges: true,
     autoFocus,
-    autoFocusSensitivity: 8,
+    autoFocusSensitivity,
     onDragEnd: (finalOffset) => {
       setLastSnap(`Drag ended near ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}`);
     },
@@ -74,6 +80,26 @@ export function AutoFocusSnapBox() {
       );
     },
   });
+
+  const centerBox = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const left = (window.innerWidth - boxWidth) / 2;
+    const top = (window.innerHeight - boxHeight) / 2;
+
+    updateEdges({
+      left,
+      top,
+      right: left + boxWidth,
+      bottom: top + boxHeight,
+    });
+  }, [updateEdges]);
+
+  useEffect(() => {
+    centerBox();
+  }, [centerBox]);
 
   const snapBoxStyle: React.CSSProperties = {
     ...style,
@@ -102,6 +128,17 @@ export function AutoFocusSnapBox() {
               <option value="1,2,10">1,2,10</option>
             </select>
           </label>
+          <label>
+            sensitivity:{" "}
+            <select
+              value={autoFocusSensitivity}
+              onChange={(e) => setAutoFocusSensitivity(Number(e.target.value))}
+            >
+              {sensitivityOptions.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
+          </label>
         </div>
         <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9, lineHeight: 1.25 }}>
           Drag/resize near a snap target, release, and <code>useEdgeBox()</code> will commit the snapped result.
@@ -119,6 +156,9 @@ export function AutoFocusSnapBox() {
         <div style={{ fontWeight: 600, marginBottom: 6 }}>Try snapping</div>
         <div style={{ fontSize: 13, opacity: 0.9 }}>
           Current preset: <code>{autoFocus}</code>
+        </div>
+        <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
+          Sensitivity: <code>{autoFocusSensitivity}</code>
         </div>
 
         {([

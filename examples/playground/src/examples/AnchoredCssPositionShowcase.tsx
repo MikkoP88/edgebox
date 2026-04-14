@@ -53,6 +53,9 @@ export function AnchoredCssPositionShowcase() {
 
       <AnchorBadge label="top-left anchor" position="top-left" tint="rgba(103, 232, 249, 0.8)" />
       <AnchorBadge label="top-center anchor" position="top-center" tint="rgba(167, 139, 250, 0.8)" />
+      <AnchorBadge label="top-right anchor" position="top-right" tint="rgba(74, 222, 128, 0.8)" />
+      <AnchorBadge label="bottom-left anchor" position="bottom-left" tint="rgba(248, 113, 113, 0.82)" />
+      <AnchorBadge label="bottom-center anchor" position="bottom-center" tint="rgba(244, 114, 182, 0.8)" />
       <AnchorBadge label="bottom-right anchor" position="bottom-right" tint="rgba(250, 204, 21, 0.85)" />
     </>
   );

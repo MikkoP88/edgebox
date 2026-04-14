@@ -39,8 +39,9 @@ The playground is deployed automatically from `.github/workflows/deploy-playgrou
 
 The playground app contains these examples:
 
-- `DraggableStickyNote` – basic drag + safe-zone clamping
-- `ResizableToolPalette` – basic resize (8 directions) + min/max constraints
+- `SimpleDraggableBox` – minimal centered drag example using `useEdgeBox()`
+- `SimpleResizableBox` – minimal centered resize example with handles on all edges and corners
 - `DragResizeWindow` – drag + resize combined (offset composition)
 - `AutoSizedQuickMenu` – auto-sized element + `useEdgeBoxViewportClamp` for intrinsic-size changes
 - `AutoFocusSnapBox` – snapping (auto focus) after drag/resize
+- `AnchoredCssPositionShowcase` – all supported CSS anchor points using `useEdgeBoxCssPosition()`

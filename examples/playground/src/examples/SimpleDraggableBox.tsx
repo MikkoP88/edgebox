@@ -1,15 +1,35 @@
+import { useEffect } from "react";
 import { useEdgeBox } from "@edgebox-lite/react";
 
+const boxWidth = 220;
+const boxHeight = 120;
+
 export function SimpleDraggableBox() {
-  const { ref, style, isDragging, getDragProps } = useEdgeBox({
+  const { ref, style, isDragging, getDragProps, updateEdges } = useEdgeBox({
     position: "bottom-left",
-    width: 220,
-    height: 120,
+    width: boxWidth,
+    height: boxHeight,
     padding: 24,
     safeZone: 16,
     commitToEdges: true,
     resizable: false,
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const left = (window.innerWidth - boxWidth) / 2;
+    const top = (window.innerHeight - boxHeight) / 2;
+
+    updateEdges({
+      left,
+      top,
+      right: left + boxWidth,
+      bottom: top + boxHeight,
+    });
+  }, [updateEdges]);
 
   return (
     <div
