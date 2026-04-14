@@ -165,19 +165,19 @@ export function applyEdgeBoxAutoFocus(
     return { left: edges.left, right: edges.right, top: safeTop, bottom: safeBottom };
   }
 
-  if (allow(6) && nearRight && nearBottom && nearCenterLeft && nearCenterTop) {
+  if (allow(6) && nearRight && nearBottom) {
     return { left: centerX, right: safeRight, top: centerY, bottom: safeBottom };
   }
 
-  if (allow(7) && nearRight && nearTop && nearCenterLeft && nearCenterBottom) {
+  if (allow(7) && nearRight && nearTop) {
     return { left: centerX, right: safeRight, top: safeTop, bottom: centerY };
   }
 
-  if (allow(8) && nearLeft && nearBottom && nearCenterRight && nearCenterTop) {
+  if (allow(8) && nearLeft && nearBottom) {
     return { left: safeLeft, right: centerX, top: centerY, bottom: safeBottom };
   }
 
-  if (allow(9) && nearLeft && nearTop && nearCenterRight && nearCenterBottom) {
+  if (allow(9) && nearLeft && nearTop) {
     return { left: safeLeft, right: centerX, top: safeTop, bottom: centerY };
   }
 

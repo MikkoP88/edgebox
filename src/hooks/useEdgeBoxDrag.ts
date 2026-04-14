@@ -385,56 +385,117 @@ export function useEdgeBoxDrag({
       bottom: baseEdges.bottom + currentOffset.y,
     };
 
-    const applyOffset = (dx: number, dy: number) => {
-      const nextOffset = clampToBoundaries(currentOffset.x + dx, currentOffset.y + dy);
-      if (nextOffset.x !== currentOffset.x || nextOffset.y !== currentOffset.y) {
-        dragOffsetRef.current = nextOffset;
-        setDragOffset(nextOffset);
-      }
-      return nextOffset;
-    };
-
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const sensitivity = Math.max(0, Math.min(100, autoFocusSensitivity));
     const thresholdX = viewportWidth * (sensitivity / 100);
     const thresholdY = viewportHeight * (sensitivity / 100);
+
     const safeLeft = safeZone;
     const safeTop = safeZone;
     const safeRight = viewportWidth - safeZone;
     const safeBottom = viewportHeight - safeZone;
 
-    const snapLeftSafe = areas.has(1) || areas.has(2) || areas.has(3) || areas.has(4) || areas.has(8) || areas.has(9) || areas.has(10);
-    const snapRightSafe = areas.has(1) || areas.has(2) || areas.has(3) || areas.has(5) || areas.has(6) || areas.has(7) || areas.has(10);
-    const snapTopSafe = areas.has(1) || areas.has(3) || areas.has(4) || areas.has(5) || areas.has(7) || areas.has(9) || areas.has(11);
-    const snapBottomSafe = areas.has(1) || areas.has(2) || areas.has(4) || areas.has(5) || areas.has(6) || areas.has(8) || areas.has(11);
+    const boxWidth = actualBox.right - actualBox.left;
+    const boxHeight = actualBox.bottom - actualBox.top;
 
-    const xCandidates: number[] = [];
-    const yCandidates: number[] = [];
+    const clampLeft = (left: number) => Math.max(safeLeft, Math.min(Math.max(safeLeft, safeRight - boxWidth), left));
+    const clampTop = (top: number) => Math.max(safeTop, Math.min(Math.max(safeTop, safeBottom - boxHeight), top));
+    const rightAlignedLeft = clampLeft(safeRight - boxWidth);
+    const bottomAlignedTop = clampTop(safeBottom - boxHeight);
+    const nearLeft = Math.abs(actualBox.left - safeLeft) <= thresholdX;
+    const nearRight = Math.abs(actualBox.right - safeRight) <= thresholdX;
+    const nearTop = Math.abs(actualBox.top - safeTop) <= thresholdY;
+    const nearBottom = Math.abs(actualBox.bottom - safeBottom) <= thresholdY;
+    const isHorizontalPreset = autoFocus === 'horizontal';
+    const isVerticalPreset = autoFocus === 'vertical';
 
-    if (snapLeftSafe) {
-      if (Math.abs(actualBox.left - safeLeft) <= thresholdX) xCandidates.push(safeLeft - actualBox.left);
-    }
-    if (snapRightSafe) {
-      if (Math.abs(actualBox.right - safeRight) <= thresholdX) xCandidates.push(safeRight - actualBox.right);
-    }
-    if (snapTopSafe) {
-      if (Math.abs(actualBox.top - safeTop) <= thresholdY) yCandidates.push(safeTop - actualBox.top);
-    }
-    if (snapBottomSafe) {
-      if (Math.abs(actualBox.bottom - safeBottom) <= thresholdY) yCandidates.push(safeBottom - actualBox.bottom);
-    }
-
-    const pickBest = (candidates: number[]) => {
-      if (candidates.length === 0) return 0;
-      return candidates.reduce((best, v) => (Math.abs(v) < Math.abs(best) ? v : best), candidates[0]);
+    const candidates: Array<{ offset: Position; priority: number }> = [];
+    const addCandidate = (matches: boolean, left: number, top: number, priority: number) => {
+      if (!matches) return;
+      candidates.push({
+        offset: {
+          x: left - actualBox.left,
+          y: top - actualBox.top,
+        },
+        priority,
+      });
     };
 
-    const dx = pickBest(xCandidates);
-    const dy = pickBest(yCandidates);
+    addCandidate(
+      (areas.has(1) || areas.has(4) || (!isHorizontalPreset && areas.has(10))) && nearLeft,
+      safeLeft,
+      actualBox.top,
+      1,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(2) || (!isVerticalPreset && areas.has(11))) && nearBottom,
+      actualBox.left,
+      bottomAlignedTop,
+      1,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(3) || (!isVerticalPreset && areas.has(11))) && nearTop,
+      actualBox.left,
+      safeTop,
+      1,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(5) || (!isHorizontalPreset && areas.has(10))) && nearRight,
+      rightAlignedLeft,
+      actualBox.top,
+      1,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(6)) && nearRight && nearBottom,
+      rightAlignedLeft,
+      bottomAlignedTop,
+      2,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(7)) && nearRight && nearTop,
+      rightAlignedLeft,
+      safeTop,
+      2,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(8)) && nearLeft && nearBottom,
+      safeLeft,
+      bottomAlignedTop,
+      2,
+    );
+    addCandidate(
+      (areas.has(1) || areas.has(9)) && nearLeft && nearTop,
+      safeLeft,
+      safeTop,
+      2,
+    );
 
-    if (dx === 0 && dy === 0) return currentOffset;
-    return applyOffset(dx, dy);
+    const bestCandidate = candidates.reduce<{ offset: Position; priority: number } | null>((best, candidate) => {
+      if (!best) return candidate;
+      if (candidate.priority !== best.priority) {
+        return candidate.priority > best.priority ? candidate : best;
+      }
+      const bestDistance = Math.hypot(best.offset.x, best.offset.y);
+      const candidateDistance = Math.hypot(candidate.offset.x, candidate.offset.y);
+      return candidateDistance < bestDistance ? candidate : best;
+    }, null);
+
+    if (!bestCandidate) {
+      return currentOffset;
+    }
+
+    const nextOffset = clampToBoundaries(
+      currentOffset.x + bestCandidate.offset.x,
+      currentOffset.y + bestCandidate.offset.y,
+    );
+
+    if (nextOffset.x !== currentOffset.x || nextOffset.y !== currentOffset.y) {
+      dragOffsetRef.current = nextOffset;
+      setDragOffset(nextOffset);
+    }
+
+    return nextOffset;
   }, [autoFocus, autoFocusSensitivity, clampToBoundaries, dragOffsetRef, edgesRef, safeZone]);
 
   const commitOffsetIntoEdges = useCallback((finalOffset: Position) => {

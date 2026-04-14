@@ -7,23 +7,24 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   background: #0b1020;
   color: #e8ecff;
-}
-
-a {
-  color: inherit;
+  line-height: 1.45;
 }
 
 .container {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 24px;
+  padding: clamp(16px, 3vw, 24px);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .card {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid #39435c;
+  background: #1a2236;
+  border-radius: 16px;
+  padding: clamp(14px, 2.6vw, 18px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 32px #000000;
 }
 
 .row {
@@ -33,38 +34,80 @@ a {
   align-items: center;
 }
 
-button, select {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+button,
+select {
+  background: #24304b;
+  border: 1px solid #45516f;
+  padding: 10px 12px;
+  border-radius: 12px;
+  min-height: 42px;
+  font: inherit;
+}
+
+button {
   color: inherit;
-  padding: 8px 10px;
-  border-radius: 10px;
 }
 
 select {
-  background: #182039;
-  color: #e8ecff;
+  appearance: none;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%23182039' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  color: #182039;
+  -webkit-text-fill-color: #182039;
+  color-scheme: light;
+  forced-color-adjust: none;
+  padding-right: 40px;
+}
+
+select:focus,
+select:active {
+  background-color: #ffffff;
+  color: #182039;
+  -webkit-text-fill-color: #182039;
+  outline: 1px solid #7b88a7;
 }
 
 select option,
 select optgroup {
-  background: #182039;
-  color: #e8ecff;
+  background: #ffffff;
+  color: #182039;
+  -webkit-text-fill-color: #182039;
+  forced-color-adjust: none;
 }
 
 button:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: #2f3d5d;
 }
 
-.exampleHostHint {
-  opacity: 0.8;
-  font-size: 14px;
+button:disabled {
+  background: #5e6780;
+  border-color: #5e6780;
+  color: #d5dbeb;
+}
+
+button, select {
+  touch-action: manipulation;
+}
+
+.controlLabel {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 280px);
+}
+
+.controlLabel span {
+  font-size: 13px;
+  color: #d7deee;
 }
 
 .featureList {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 12px;
 }
 
 .featurePill {
@@ -72,8 +115,27 @@ button:hover {
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid #45516f;
+  background: #24304b;
   font-size: 12px;
-  opacity: 0.95;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 14px;
+  }
+
+  .row {
+    gap: 10px;
+  }
+
+  .controlLabel,
+  .controlLabel select {
+    width: 100%;
+  }
+
+  button,
+  select {
+    width: 100%;
+  }
 }

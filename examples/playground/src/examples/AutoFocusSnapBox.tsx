@@ -4,12 +4,13 @@ import {
   useEdgeBoxPosition,
   useEdgeBoxResize,
   useEdgeBoxTransform,
+  useEdgeBoxViewportSize,
   type EdgeBoxAutoFocus,
   type ResizeDirection,
 } from "@edgebox-lite/react";
 
-const boxWidth = 360;
-const boxHeight = 220;
+const maxBoxWidth = 360;
+const maxBoxHeight = 220;
 const viewportInset = 24;
 const sensitivityOptions = [4, 8, 12, 16, 24] as const;
 const autoFocusOptions: EdgeBoxAutoFocus[] = ["unset", "corners", "horizontal", "vertical", "all", "full", "1,2,10"];
@@ -30,7 +31,7 @@ function Handle({
     position: "absolute",
     width: size,
     height: size,
-    background: "rgba(255,255,255,0.85)",
+    background: "#ffffff",
     borderRadius: 999,
   };
 
@@ -62,19 +63,27 @@ function Handle({
 
 export function AutoFocusSnapBox() {
   const ref = useRef<HTMLDivElement>(null);
-  const [dragAutoFocus, setDragAutoFocus] = useState<EdgeBoxAutoFocus>("corners");
-  const [resizeAutoFocus, setResizeAutoFocus] = useState<EdgeBoxAutoFocus>("all");
-  const [dragSensitivity, setDragSensitivity] = useState<number>(8);
-  const [resizeSensitivity, setResizeSensitivity] = useState<number>(8);
-  const [lastSnap, setLastSnap] = useState("No snap commit yet");
+  const { width: viewportWidth, height: viewportHeight } = useEdgeBoxViewportSize({ padding: viewportInset });
+  const initialWidth = Math.min(maxBoxWidth, viewportWidth);
+  const initialHeight = Math.min(maxBoxHeight, viewportHeight);
+  const [autoFocus, setAutoFocus] = useState<EdgeBoxAutoFocus>("corners");
+  const [autoFocusSensitivity, setAutoFocusSensitivity] = useState<number>(8);
+  const [committedSize, setCommittedSize] = useState({ width: initialWidth, height: initialHeight });
+
+  useEffect(() => {
+    setCommittedSize((prev) => ({
+      width: Math.min(prev.width, initialWidth),
+      height: Math.min(prev.height, initialHeight),
+    }));
+  }, [initialHeight, initialWidth]);
 
   const {
     updateEdges,
     edges,
   } = useEdgeBoxPosition({
     position: "top-center",
-    width: boxWidth,
-    height: boxHeight,
+    width: committedSize.width,
+    height: committedSize.height,
     padding: viewportInset,
     safeZone: viewportInset,
   });
@@ -89,12 +98,9 @@ export function AutoFocusSnapBox() {
     updateEdges,
     commitToEdges: true,
     safeZone: viewportInset,
-    autoFocus: dragAutoFocus,
-    autoFocusSensitivity: dragSensitivity,
+    autoFocus,
+    autoFocusSensitivity,
     elementRef: ref,
-    onDragEnd: (finalOffset) => {
-      setLastSnap(`Drag ended near ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}`);
-    },
   });
 
   const {
@@ -106,18 +112,14 @@ export function AutoFocusSnapBox() {
     edges,
     updateEdges,
     commitToEdges: true,
-    initialWidth: boxWidth,
-    initialHeight: boxHeight,
+    onCommitSize: setCommittedSize,
+    initialWidth: committedSize.width,
+    initialHeight: committedSize.height,
     safeZone: viewportInset,
-    autoFocus: resizeAutoFocus,
-    autoFocusSensitivity: resizeSensitivity,
-    minWidth: 260,
-    minHeight: 160,
-    onResizeEnd: (finalDimensions, finalOffset) => {
-      setLastSnap(
-        `Resize snapped to ${Math.round(finalDimensions.width)}×${Math.round(finalDimensions.height)} at ${Math.round(finalOffset.x)}, ${Math.round(finalOffset.y)}`
-      );
-    },
+    autoFocus,
+    autoFocusSensitivity,
+    minWidth: Math.min(240, committedSize.width),
+    minHeight: Math.min(150, committedSize.height),
   });
 
   const { transform } = useEdgeBoxTransform({
@@ -126,25 +128,25 @@ export function AutoFocusSnapBox() {
     isResizing,
   });
 
-  const centerBox = useCallback(() => {
+  const centerBox = useCallback((width: number, height: number) => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const left = (window.innerWidth - boxWidth) / 2;
-    const top = (window.innerHeight - boxHeight) / 2;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
 
     updateEdges({
       left,
       top,
-      right: left + boxWidth,
-      bottom: top + boxHeight,
+      right: left + width,
+      bottom: top + height,
     });
   }, [updateEdges]);
 
   useEffect(() => {
-    centerBox();
-  }, [centerBox]);
+    centerBox(initialWidth, initialHeight);
+  }, [centerBox, initialHeight, initialWidth]);
 
   const snapBoxStyle: React.CSSProperties = {
     position: "fixed",
@@ -153,10 +155,11 @@ export function AutoFocusSnapBox() {
     width: dimensions.width,
     height: dimensions.height,
     transform,
-    background: "rgba(255,255,255,0.07)",
-    border: "1px solid rgba(255,255,255,0.18)",
+    background: "#1b2337",
+    border: "1px solid #45516f",
     borderRadius: 16,
     padding: 12,
+    boxSizing: "border-box",
     touchAction: "none",
     cursor: isDragging ? "grabbing" : "grab",
   };
@@ -170,51 +173,26 @@ export function AutoFocusSnapBox() {
     <div>
       <div className="card" style={{ marginTop: 16 }}>
         <div className="row" style={{ flexWrap: "wrap", gap: 10 }}>
-          <strong>AutoFocusSnapBox</strong>
-          <label style={{ marginLeft: "auto" }}>
-            drag autoFocus:{" "}
-            <select value={dragAutoFocus} onChange={(e) => setDragAutoFocus(e.target.value as EdgeBoxAutoFocus)}>
+          <strong>Auto focus snap box</strong>
+          <label className="controlLabel" style={{ marginLeft: "auto", minWidth: 160 }}>
+            <span>Auto focus preset</span>
+            <select value={autoFocus} onChange={(e) => setAutoFocus(e.target.value as EdgeBoxAutoFocus)}>
               {autoFocusOptions.map((value) => (
-                <option key={`drag-${value}`} value={value}>{value}</option>
+                <option key={value} value={value}>{value}</option>
               ))}
             </select>
           </label>
-          <label>
-            drag sensitivity:{" "}
+          <label className="controlLabel" style={{ minWidth: 140 }}>
+            <span>Sensitivity</span>
             <select
-              value={dragSensitivity}
-              onChange={(e) => setDragSensitivity(Number(e.target.value))}
+              value={autoFocusSensitivity}
+              onChange={(e) => setAutoFocusSensitivity(Number(e.target.value))}
             >
               {sensitivityOptions.map((value) => (
                 <option key={value} value={value}>{value}</option>
               ))}
             </select>
           </label>
-          <label>
-            resize autoFocus:{" "}
-            <select value={resizeAutoFocus} onChange={(e) => setResizeAutoFocus(e.target.value as EdgeBoxAutoFocus)}>
-              {autoFocusOptions.map((value) => (
-                <option key={`resize-${value}`} value={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            resize sensitivity:{" "}
-            <select
-              value={resizeSensitivity}
-              onChange={(e) => setResizeSensitivity(Number(e.target.value))}
-            >
-              {sensitivityOptions.map((value) => (
-                <option key={`resize-${value}`} value={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.9, lineHeight: 1.25 }}>
-          Drag and resize use separate auto-focus selections here, and snapping respects the same 24px inset on every side.
-        </div>
-        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
-          Last snap: <code>{lastSnap}</code>
         </div>
       </div>
 
@@ -225,11 +203,11 @@ export function AutoFocusSnapBox() {
         onTouchStart={handleTouchStart}
       >
         <div style={{ fontWeight: 600, marginBottom: 6 }}>Try snapping</div>
-        <div style={{ fontSize: 13, opacity: 0.9 }}>
-          Drag preset: <code>{dragAutoFocus}</code> · Resize preset: <code>{resizeAutoFocus}</code>
+        <div style={{ fontSize: 13, color: "#d7deee" }}>
+          Current preset: <code>{autoFocus}</code>
         </div>
-        <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-          Drag sensitivity: <code>{dragSensitivity}</code> · Resize sensitivity: <code>{resizeSensitivity}</code>
+        <div style={{ fontSize: 13, color: "#d7deee", marginTop: 4 }}>
+          Sensitivity: <code>{autoFocusSensitivity}</code>
         </div>
 
         {([
