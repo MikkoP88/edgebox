@@ -10,6 +10,11 @@ It’s designed for smooth interactions and low overhead:
 
 This repo contains the `@edgebox-lite/react` package.
 
+## Live demo
+
+- Playground demo → https://mikkop88.github.io/edgebox-lite/
+- Example source → `examples/playground`
+
 ## Features (at a glance)
 
 - **Anchored positioning**: start at `top-left`, `bottom-right`, `top-center`, etc.
@@ -68,8 +73,13 @@ npm install
 npm run dev
 ```
 
+Hosted demo:
+
+- GitHub Pages → https://mikkop88.github.io/edgebox-lite/
+
 ## Documentation
 
+- Live playground → https://mikkop88.github.io/edgebox-lite/
 - Advanced usage → `docs/advanced.md`
 - API reference → `docs/api.md`
 

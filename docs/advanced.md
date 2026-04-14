@@ -4,6 +4,8 @@ Back to the main guide: [`README.md`](../README.md)
 
 Full API reference: [`docs/api.md`](./api.md)
 
+Live playground demo: https://mikkop88.github.io/edgebox-lite/
+
 ## Advanced: composing the primitive hooks manually
 
 Most apps should start with `useEdgeBox()`.

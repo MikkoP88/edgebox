@@ -4,6 +4,8 @@ Back to the main guide: [`README.md`](../README.md)
 
 Advanced usage guide: [`docs/advanced.md`](./advanced.md)
 
+Live playground demo: https://mikkop88.github.io/edgebox-lite/
+
 ## Exports
 
 ```ts

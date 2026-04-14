@@ -1,6 +1,8 @@
 # Examples
 
-This directory contains runnable examples for `@edgebox/react`.
+This directory contains runnable examples for `@edgebox-lite/react`.
+
+Live demo: https://mikkop88.github.io/edgebox-lite/
 
 ## Requirements
 
@@ -25,6 +27,13 @@ npm run dev
 ```
 
 Then open the dev server URL shown in the terminal.
+
+## GitHub Pages deployment
+
+The playground is deployed automatically from `.github/workflows/deploy-playground.yml`.
+
+- pushes to `main` rebuild the demo
+- the published site is available at `https://mikkop88.github.io/edgebox-lite/`
 
 ## Included examples
 
