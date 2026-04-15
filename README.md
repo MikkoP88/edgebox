@@ -15,6 +15,19 @@ EdgeBox uses an **edges-first** model:
 
 That keeps interaction updates smooth while still letting you commit final geometry when a gesture ends.
 
+## Features
+
+- Anchored positioning: `top-left`, `top-center`, `bottom-right`, and more
+- Drag with safe-zone clamping
+- 8-direction resize with min/max constraints
+- Optional commit mode for drag and resize
+- Auto focus snapping on gesture end
+- Auto-sized DOM viewport clamping with `ResizeObserver`
+- Geometry helpers for rect/edge conversions and alignment
+- Viewport and measured-size helpers
+- SSR-aware guards around `window`
+- Multitouch-safe gesture tracking
+
 ## Start here
 
 - Live playground: https://mikkop88.github.io/edgebox-lite/
@@ -103,19 +116,6 @@ Common choices:
 | Auto-sized menu that must stay in view | `useEdgeBoxPosition` + `useEdgeBoxDrag` + `useEdgeBoxViewportClamp` |
 | Anchored CSS-only placement | `useEdgeBoxCssPosition` |
 | Linked/follower overlay | `useEdgeBoxLinkedBoxes` |
-
-## Main features
-
-- Anchored positioning: `top-left`, `top-center`, `bottom-right`, and more
-- Drag with safe-zone clamping
-- 8-direction resize with min/max constraints
-- Optional commit mode for drag and resize
-- Auto focus snapping on gesture end
-- Auto-sized DOM viewport clamping with `ResizeObserver`
-- Geometry helpers for rect/edge conversions and alignment
-- Viewport and measured-size helpers
-- SSR-aware guards around `window`
-- Multitouch-safe gesture tracking
 
 ## Exports at a glance
 
