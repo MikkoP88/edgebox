@@ -1,13 +1,28 @@
 # EdgeBox Lite - `@edgebox-lite/react`
 
-`@edgebox-lite/react` is a lightweight React hook package for draggable, resizable, and anchored floating UI.
+`@edgebox-lite/react` is a lightweight React hook package for building floating elements that can be dragged, resized, and anchored to the viewport.
 
-Use it for things like:
+Great for building:
 - floating panels
 - tool palettes
 - chat windows
 - menus and popovers
-- small anchored overlays
+- or any elements that need to be moved and/or resized
+
+## Features
+
+- Easy anchored placement such as `top-left`, `top-center`, and `bottom-right`
+- Smooth dragging that stays within a safe on-screen area
+- Resize from all 8 directions with minimum and maximum size limits
+- Optional commit mode for drag and resize interactions
+- Automatic focus snapping when dragging or resizing ends
+- Keeps auto-sized elements inside the viewport with `ResizeObserver`
+- Built-in geometry helpers for alignment and rect/edge conversion
+- Helpers for viewport size and measured element size
+- Safe to use in SSR environments with `window` guards
+- Reliable gesture tracking, including multitouch scenarios
+- Published in both ESM and CommonJS formats
+
 
 EdgeBox uses an **edges-first** model:
 - committed position is stored as viewport `left` / `right` / `top` / `bottom`
@@ -15,18 +30,9 @@ EdgeBox uses an **edges-first** model:
 
 That keeps interaction updates smooth while still letting you commit final geometry when a gesture ends.
 
-## Features
+## Requirements
 
-- Anchored positioning: `top-left`, `top-center`, `bottom-right`, and more
-- Drag with safe-zone clamping
-- 8-direction resize with min/max constraints
-- Optional commit mode for drag and resize
-- Auto focus snapping on gesture end
-- Auto-sized DOM viewport clamping with `ResizeObserver`
-- Geometry helpers for rect/edge conversions and alignment
-- Viewport and measured-size helpers
-- SSR-aware guards around `window`
-- Multitouch-safe gesture tracking
+- React `18` or newer
 
 ## Start here
 
@@ -41,14 +47,9 @@ That keeps interaction updates smooth while still letting you commit final geome
 npm install @edgebox-lite/react
 ```
 
-Requirements:
-- React `>=18`
-- TypeScript supported
-- ESM + CJS builds included
-
 ## Quick start
 
-For most apps, start with `useEdgeBox()`.
+Start with `useEdgeBox()`.
 
 ```tsx
 import { useEdgeBox } from "@edgebox-lite/react";
